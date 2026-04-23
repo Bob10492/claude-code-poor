@@ -90,6 +90,14 @@ ${question}`
     }),
     querySource: 'side_question',
     forkLabel: 'side_question',
+    subagentReason: 'side_query',
+    subagentTriggerKind: 'explicit_user_command',
+    subagentTriggerDetail: 'btw_command',
+    subagentTriggerPayload: {
+      command: '/btw',
+      max_turns: 1,
+      tools_allowed: false,
+    },
     maxTurns: 1, // Single turn only - no tool use loops
     // No future request shares this suffix; skip writing cache entries.
     skipCacheWrite: true,

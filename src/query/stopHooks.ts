@@ -84,6 +84,7 @@ export async function* handleStopHooks(
   await emitHarnessEvent({
     event: 'stop_hooks.started',
     component: 'stop_hooks',
+    user_action_id: toolUseContext.userActionId ?? null,
     query_id: toolUseContext.queryTracking?.chainId ?? null,
     query_source: querySource,
     subagent_id: toolUseContext.agentId ?? null,
@@ -348,6 +349,7 @@ export async function* handleStopHooks(
       await emitHarnessEvent({
         event: 'stop_hooks.completed',
         component: 'stop_hooks',
+        user_action_id: toolUseContext.userActionId ?? null,
         query_id: toolUseContext.queryTracking?.chainId ?? null,
         query_source: querySource,
         subagent_id: toolUseContext.agentId ?? null,
@@ -367,6 +369,7 @@ export async function* handleStopHooks(
       await emitHarnessEvent({
         event: 'stop_hooks.completed',
         component: 'stop_hooks',
+        user_action_id: toolUseContext.userActionId ?? null,
         query_id: toolUseContext.queryTracking?.chainId ?? null,
         query_source: querySource,
         subagent_id: toolUseContext.agentId ?? null,
@@ -494,6 +497,7 @@ export async function* handleStopHooks(
         await emitHarnessEvent({
           event: 'stop_hooks.completed',
           component: 'stop_hooks',
+          user_action_id: toolUseContext.userActionId ?? null,
           query_id: toolUseContext.queryTracking?.chainId ?? null,
           query_source: querySource,
           subagent_id: toolUseContext.agentId ?? null,
@@ -512,6 +516,7 @@ export async function* handleStopHooks(
         await emitHarnessEvent({
           event: 'stop_hooks.completed',
           component: 'stop_hooks',
+          user_action_id: toolUseContext.userActionId ?? null,
           query_id: toolUseContext.queryTracking?.chainId ?? null,
           query_source: querySource,
           subagent_id: toolUseContext.agentId ?? null,
@@ -533,6 +538,7 @@ export async function* handleStopHooks(
     await emitHarnessEvent({
       event: 'stop_hooks.completed',
       component: 'stop_hooks',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       query_source: querySource,
       subagent_id: toolUseContext.agentId ?? null,

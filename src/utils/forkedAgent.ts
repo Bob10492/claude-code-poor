@@ -92,6 +92,14 @@ export type ForkedAgentParams = {
   querySource: QuerySource
   /** Label for analytics (e.g., 'session_memory', 'supervisor') */
   forkLabel: string
+  /** Stable business reason for spawning this subagent. */
+  subagentReason?: string
+  /** High-level mechanism that triggered this subagent spawn. */
+  subagentTriggerKind?: string
+  /** Concrete branch detail under the trigger mechanism. */
+  subagentTriggerDetail?: string
+  /** Structured trigger evidence captured at the callsite. */
+  subagentTriggerPayload?: Record<string, unknown>
   /** Optional overrides for the subagent context (e.g., readFileState from setup phase) */
   overrides?: SubagentContextOverrides
   /**
@@ -445,6 +453,7 @@ export function createSubagentContext(
     // Fields that can be overridden or copied from parent
     options: overrides?.options ?? parentContext.options,
     messages: overrides?.messages ?? parentContext.messages,
+    userActionId: parentContext.userActionId,
     // Generate new agentId for subagents (each subagent should have its own ID)
     agentId: overrides?.agentId ?? createAgentId(),
     agentType: overrides?.agentType,
@@ -493,6 +502,10 @@ export async function runForkedAgent({
   canUseTool,
   querySource,
   forkLabel,
+  subagentReason,
+  subagentTriggerKind,
+  subagentTriggerDetail,
+  subagentTriggerPayload,
   overrides,
   maxOutputTokens,
   maxTurns,
@@ -503,13 +516,25 @@ export async function runForkedAgent({
   const startTime = Date.now()
   const outputMessages: Message[] = []
   let totalUsage: NonNullableUsage = { ...EMPTY_USAGE }
+  const resolvedSubagentReason =
+    subagentReason ??
+    forkLabel ??
+    (typeof querySource === 'string' && querySource.length > 0
+      ? querySource
+      : 'unknown')
   await emitHarnessEvent({
     event: 'subagent.spawn.requested',
     component: 'forked_agent',
+    user_action_id: cacheSafeParams.toolUseContext.userActionId ?? null,
     query_source: querySource,
     subagent_type: forkLabel,
+    subagent_reason: resolvedSubagentReason,
+    subagent_trigger_kind: subagentTriggerKind ?? null,
+    subagent_trigger_detail: subagentTriggerDetail ?? null,
     payload: {
       fork_label: forkLabel,
+      subagent_reason: resolvedSubagentReason,
+      subagent_trigger_payload: subagentTriggerPayload ?? null,
       prompt_message_count: promptMessages.length,
       skip_transcript: skipTranscript ?? false,
       max_turns: maxTurns ?? null,
@@ -542,12 +567,18 @@ export async function runForkedAgent({
   await emitHarnessEvent({
     event: 'subagent.spawned',
     component: 'forked_agent',
+    user_action_id: isolatedToolUseContext.userActionId ?? null,
     query_id: isolatedToolUseContext.queryTracking?.chainId ?? null,
     query_source: querySource,
     subagent_id: isolatedToolUseContext.agentId ?? agentId ?? null,
     subagent_type: forkLabel,
+    subagent_reason: resolvedSubagentReason,
+    subagent_trigger_kind: subagentTriggerKind ?? null,
+    subagent_trigger_detail: subagentTriggerDetail ?? null,
     payload: {
       fork_label: forkLabel,
+      subagent_reason: resolvedSubagentReason,
+      subagent_trigger_payload: subagentTriggerPayload ?? null,
       inherited_message_count: forkContextMessages.length,
       prompt_message_count: promptMessages.length,
       transcript_enabled: Boolean(agentId),
@@ -603,10 +634,14 @@ export async function runForkedAgent({
       await emitHarnessEvent({
         event: 'subagent.message.received',
         component: 'forked_agent',
+        user_action_id: isolatedToolUseContext.userActionId ?? null,
         query_id: isolatedToolUseContext.queryTracking?.chainId ?? null,
         query_source: querySource,
         subagent_id: isolatedToolUseContext.agentId ?? agentId ?? null,
         subagent_type: forkLabel,
+        subagent_reason: resolvedSubagentReason,
+        subagent_trigger_kind: subagentTriggerKind ?? null,
+        subagent_trigger_detail: subagentTriggerDetail ?? null,
         payload: {
           message_type: (message as Message).type,
         },
@@ -659,12 +694,18 @@ export async function runForkedAgent({
   await emitHarnessEvent({
     event: 'subagent.completed',
     component: 'forked_agent',
+    user_action_id: isolatedToolUseContext.userActionId ?? null,
     query_id: isolatedToolUseContext.queryTracking?.chainId ?? null,
     query_source: querySource,
     subagent_id: isolatedToolUseContext.agentId ?? agentId ?? null,
     subagent_type: forkLabel,
+    subagent_reason: resolvedSubagentReason,
+    subagent_trigger_kind: subagentTriggerKind ?? null,
+    subagent_trigger_detail: subagentTriggerDetail ?? null,
     payload: {
       fork_label: forkLabel,
+      subagent_reason: resolvedSubagentReason,
+      subagent_trigger_payload: subagentTriggerPayload ?? null,
       duration_ms: durationMs,
       message_count: outputMessages.length,
       input_tokens: totalUsage.input_tokens,

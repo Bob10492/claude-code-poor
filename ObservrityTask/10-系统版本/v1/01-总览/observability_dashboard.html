@@ -1,0 +1,1125 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本地可观测系统 V1 Dashboard</title>
+  <style>
+    :root {
+      --bg: #f7f2e8;
+      --panel: #fffaf0;
+      --ink: #1f1b16;
+      --muted: #726657;
+      --line: #dfd1be;
+      --accent: #b24c2d;
+      --accent-soft: #f3d4c7;
+      --shadow: rgba(86, 53, 24, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(243, 212, 199, 0.65), transparent 28%),
+        linear-gradient(180deg, #fbf7f0 0%, #f4ede1 100%);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page {
+      width: min(1380px, calc(100vw - 40px));
+      margin: 24px auto 40px;
+    }
+    .hero, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 14px 40px var(--shadow);
+    }
+    .hero {
+      padding: 28px;
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: 34px;
+      line-height: 1.1;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .meta-chip {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff4e7;
+      border: 1px solid var(--line);
+    }
+    .meta-chip .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .meta-chip .value {
+      font-size: 15px;
+      font-weight: 700;
+      word-break: break-all;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      padding: 16px;
+      border-radius: 16px;
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      min-height: 116px;
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .card-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .card-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+    .metric-link {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .panel {
+      padding: 20px;
+    }
+    .panel h2, .panel h3 {
+      margin-top: 0;
+    }
+    .muted {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: #fff6ea;
+    }
+    .metric-docs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .metric-doc {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fffdf8;
+    }
+    .metric-doc h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .metric-doc p {
+      margin: 0 0 8px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    @media (max-width: 980px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+      .page {
+        width: min(100vw - 20px, 1380px);
+        margin: 12px auto 24px;
+      }
+      .hero {
+        padding: 20px;
+      }
+      .card-value {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>本地可观测系统 V1</h1>
+      <p>这版 dashboard 按方向 A 执行清单把指标分成更稳定的分析层级。成本侧按 <strong>每日总量</strong>、<strong>成本结构</strong>、<strong>主/子链路</strong>、<strong>日均/效率</strong> 展示；完整性侧同时提供 <strong>原生口径</strong>、<strong>推断口径</strong> 和 <strong>补链差值</strong>；loop 指标单独拆开，用来区分“prompt 大”还是“多轮循环导致贵”。</p>
+      <div class="meta">
+        <div class="meta-chip"><div class="label">日期</div><div class="value">2026-04-22</div></div>
+        <div class="meta-chip"><div class="label">源文件</div><div class="value">events-20260422.jsonl</div></div>
+        <div class="meta-chip"><div class="label">文件大小(bytes)</div><div class="value">868649</div></div>
+        <div class="meta-chip"><div class="label">建库时间</div><div class="value">2026-04-22T18:30:43.396Z</div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>概览</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">事件数</div>
+    <a class="metric-link" href="#metric-event_count">说明</a>
+  </div>
+  <div class="card-value">809</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">用户动作数</div>
+    <a class="metric-link" href="#metric-user_action_count">说明</a>
+  </div>
+  <div class="card-value">2</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Query 数</div>
+    <a class="metric-link" href="#metric-query_count">说明</a>
+  </div>
+  <div class="card-value">7</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Turn 数</div>
+    <a class="metric-link" href="#metric-turn_count">说明</a>
+  </div>
+  <div class="card-value">24</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具调用数</div>
+    <a class="metric-link" href="#metric-tool_calls_total">说明</a>
+  </div>
+  <div class="card-value">42</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Subagent 数</div>
+    <a class="metric-link" href="#metric-subagent_count">说明</a>
+  </div>
+  <div class="card-value">5</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>完整性</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">严格 Query 完成率</div>
+    <a class="metric-link" href="#metric-strict_query_completion_rate">说明</a>
+  </div>
+  <div class="card-value">0.285714</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">推断 Query 完成率</div>
+    <a class="metric-link" href="#metric-inferred_query_completion_rate">说明</a>
+  </div>
+  <div class="card-value">0.285714</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Query 补链差值</div>
+    <a class="metric-link" href="#metric-query_completeness_gap">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">严格 Turn 闭合率</div>
+    <a class="metric-link" href="#metric-strict_turn_state_closure_rate">说明</a>
+  </div>
+  <div class="card-value">0.708333</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">推断 Turn 闭合率</div>
+    <a class="metric-link" href="#metric-inferred_turn_state_closure_rate">说明</a>
+  </div>
+  <div class="card-value">0.708333</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Turn 补链差值</div>
+    <a class="metric-link" href="#metric-turn_closure_gap">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具闭合率</div>
+    <a class="metric-link" href="#metric-tool_lifecycle_closure_rate">说明</a>
+  </div>
+  <div class="card-value">0.904762</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Subagent 闭合率</div>
+    <a class="metric-link" href="#metric-subagent_lifecycle_closure_rate">说明</a>
+  </div>
+  <div class="card-value">1</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Snapshot 缺失率</div>
+    <a class="metric-link" href="#metric-snapshot_missing_rate">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Orphan Event 率</div>
+    <a class="metric-link" href="#metric-orphan_event_rate">说明</a>
+  </div>
+  <div class="card-value">0.007417</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>成本 - 每日总量</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">总 Prompt 输入 Tokens</div>
+    <a class="metric-link" href="#metric-total_prompt_input_tokens">说明</a>
+  </div>
+  <div class="card-value">3361798</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">总 Billed Tokens</div>
+    <a class="metric-link" href="#metric-total_billed_tokens">说明</a>
+  </div>
+  <div class="card-value">3375883</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Output Tokens</div>
+    <a class="metric-link" href="#metric-output_tokens">说明</a>
+  </div>
+  <div class="card-value">14085</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>成本 - 结构拆分</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">裸 Input Tokens</div>
+    <a class="metric-link" href="#metric-raw_input_tokens">说明</a>
+  </div>
+  <div class="card-value">24</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Cache Read Tokens</div>
+    <a class="metric-link" href="#metric-cache_read_tokens">说明</a>
+  </div>
+  <div class="card-value">2209219</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Cache Create Tokens</div>
+    <a class="metric-link" href="#metric-cache_create_tokens">说明</a>
+  </div>
+  <div class="card-value">1152555</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>成本 - 主/子链路</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">主线程 Prompt 输入</div>
+    <a class="metric-link" href="#metric-main_thread_prompt_tokens">说明</a>
+  </div>
+  <div class="card-value">2003202</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Subagent Prompt 输入</div>
+    <a class="metric-link" href="#metric-subagent_prompt_tokens">说明</a>
+  </div>
+  <div class="card-value">1358596</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Subagent 放大倍率</div>
+    <a class="metric-link" href="#metric-subagent_amplification_ratio">说明</a>
+  </div>
+  <div class="card-value">0.678212</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>成本 - 日均/效率</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">每个用户动作平均 Prompt 输入</div>
+    <a class="metric-link" href="#metric-avg_prompt_input_per_user_action">说明</a>
+  </div>
+  <div class="card-value">1680899</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每个用户动作平均 Billed</div>
+    <a class="metric-link" href="#metric-avg_billed_per_user_action">说明</a>
+  </div>
+  <div class="card-value">1687941.5</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每个 Query 平均 Prompt 输入</div>
+    <a class="metric-link" href="#metric-avg_prompt_input_per_query">说明</a>
+  </div>
+  <div class="card-value">480256.857</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每个 Query 平均 Billed</div>
+    <a class="metric-link" href="#metric-avg_billed_per_query">说明</a>
+  </div>
+  <div class="card-value">482269</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Loop / Turn</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">每日平均 Turn/Query</div>
+    <a class="metric-link" href="#metric-daily_avg_turns_per_query">说明</a>
+  </div>
+  <div class="card-value">3.429</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每日平均 Loop 终点</div>
+    <a class="metric-link" href="#metric-daily_avg_loop_iter_end">说明</a>
+  </div>
+  <div class="card-value">3.429</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每日 Loop 终点 P95</div>
+    <a class="metric-link" href="#metric-daily_p95_loop_iter_end">说明</a>
+  </div>
+  <div class="card-value">5.4</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">多轮 Query 占比</div>
+    <a class="metric-link" href="#metric-daily_queries_with_loop_iter_gt_1_rate">说明</a>
+  </div>
+  <div class="card-value">1</div>
+</article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>延迟</h2>
+      <div class="card-grid">
+        <article class="card">
+  <div class="card-top">
+    <div class="card-label">Submit -&gt; First Chunk</div>
+    <a class="metric-link" href="#metric-submit_to_first_chunk_ms">说明</a>
+  </div>
+  <div class="card-value">23922</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Preprocess</div>
+    <a class="metric-link" href="#metric-preprocess_duration_ms">说明</a>
+  </div>
+  <div class="card-value">49.917</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Prompt.Build</div>
+    <a class="metric-link" href="#metric-prompt_build_duration_ms">说明</a>
+  </div>
+  <div class="card-value">5.042</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Request -&gt; First Chunk</div>
+    <a class="metric-link" href="#metric-api_first_chunk_latency_ms">说明</a>
+  </div>
+  <div class="card-value">16010.583</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">API 总时长</div>
+    <a class="metric-link" href="#metric-api_total_duration_ms">说明</a>
+  </div>
+  <div class="card-value">24755.125</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具执行平均时长</div>
+    <a class="metric-link" href="#metric-tool_execution_duration_ms">说明</a>
+  </div>
+  <div class="card-value">2988.526</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Stop Hooks 平均时长</div>
+    <a class="metric-link" href="#metric-stop_hook_duration_ms">说明</a>
+  </div>
+  <div class="card-value">2.5</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Subagent 生命周期均值</div>
+    <a class="metric-link" href="#metric-subagent_duration_ms">说明</a>
+  </div>
+  <div class="card-value">87090.75</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">User Action E2E</div>
+    <a class="metric-link" href="#metric-user_action_e2e_duration_ms">说明</a>
+  </div>
+  <div class="card-value">275601</div>
+</article>
+      </div>
+    </section>
+
+    <div class="two-col">
+      <section class="panel">
+        <h2>压缩与上下文治理</h2>
+        <div class="card-grid">
+          <article class="card">
+  <div class="card-top">
+    <div class="card-label">Preprocess 前 Tokens</div>
+    <a class="metric-link" href="#metric-preprocess_tokens_before_total">说明</a>
+  </div>
+  <div class="card-value">3481101</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Preprocess 后 Tokens</div>
+    <a class="metric-link" href="#metric-preprocess_tokens_after_total">说明</a>
+  </div>
+  <div class="card-value">3481101</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">总节省 Tokens</div>
+    <a class="metric-link" href="#metric-tokens_saved_total">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">压缩收益率</div>
+    <a class="metric-link" href="#metric-compression_gain_ratio">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Autocompact 触发率</div>
+    <a class="metric-link" href="#metric-autocompact_trigger_rate">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">HISTORY_SNIP Gate</div>
+    <a class="metric-link" href="#metric-history_snip_gate_state">说明</a>
+  </div>
+  <div class="card-value">样本中观察到命中</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">contextCollapse 启用状态</div>
+    <a class="metric-link" href="#metric-contextCollapse_enabled_gauge">说明</a>
+  </div>
+  <div class="card-value">0.0</div>
+</article>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>工具与恢复</h2>
+        <div class="card-grid">
+          <article class="card">
+  <div class="card-top">
+    <div class="card-label">工具成功率</div>
+    <a class="metric-link" href="#metric-tool_success_rate">说明</a>
+  </div>
+  <div class="card-value">0.904762</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具失败率</div>
+    <a class="metric-link" href="#metric-tool_failure_rate">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具平均时长</div>
+    <a class="metric-link" href="#metric-tool_avg_duration_ms">说明</a>
+  </div>
+  <div class="card-value">2988.526</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具 P95 时长</div>
+    <a class="metric-link" href="#metric-tool_p95_duration_ms">说明</a>
+  </div>
+  <div class="card-value">17520.65</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每个 Query 的工具数</div>
+    <a class="metric-link" href="#metric-tools_per_query">说明</a>
+  </div>
+  <div class="card-value">6</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">每个 Subagent 的工具数</div>
+    <a class="metric-link" href="#metric-tools_per_subagent">说明</a>
+  </div>
+  <div class="card-value">5.6</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">工具后续驱动率</div>
+    <a class="metric-link" href="#metric-tool_followup_turn_ratio">说明</a>
+  </div>
+  <div class="card-value">0.944444</div>
+</article>
+          <article class="card">
+  <div class="card-top">
+    <div class="card-label">Prompt Too Long 恢复次数</div>
+    <a class="metric-link" href="#metric-prompt_too_long_recovery_attempts">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Max Output Tokens 恢复次数</div>
+    <a class="metric-link" href="#metric-max_output_tokens_recovery_attempts">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Token Budget Continue Rate</div>
+    <a class="metric-link" href="#metric-token_budget_continue_rate">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Stop Hook Block Rate</div>
+    <a class="metric-link" href="#metric-stop_hook_block_rate">说明</a>
+  </div>
+  <div class="card-value">0</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">API Error Rate</div>
+    <a class="metric-link" href="#metric-api_error_rate">说明</a>
+  </div>
+  <div class="card-value">0.142857</div>
+</article>
+<article class="card">
+  <div class="card-top">
+    <div class="card-label">Tool Failure Terminal Rate</div>
+    <a class="metric-link" href="#metric-tool_failure_terminal_rate">说明</a>
+  </div>
+  <div class="card-value">null</div>
+</article>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+  <h3>按 Source 成本拆分</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>query_source</th><th>total_prompt_input_tokens</th><th>total_billed_tokens</th><th>daily_cost_share</th></tr></thead>
+      <tbody>
+        <tr><td>repl_main_thread</td><td>2003202</td><td>2007661</td><td>0.594707</td></tr>
+<tr><td>session_memory</td><td>1002017</td><td>1009847</td><td>0.299136</td></tr>
+<tr><td>agent:builtin:Explore</td><td>222858</td><td>223229</td><td>0.066125</td></tr>
+<tr><td>extract_memories</td><td>133721</td><td>135146</td><td>0.040033</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>按 Agent/Source 成本拆分</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>agent_name</th><th>source_group</th><th>agent_total_prompt_input_tokens</th><th>agent_total_billed_tokens</th><th>agent_cost_share</th><th>agent_query_count</th><th>agent_avg_turns_per_query</th><th>agent_avg_loop_iter_end</th></tr></thead>
+      <tbody>
+        <tr><td>main_thread</td><td>main_thread</td><td>2003202</td><td>2007661</td><td>0.594707</td><td>2</td><td>5</td><td>5</td></tr>
+<tr><td>session_memory</td><td>memory</td><td>1002017</td><td>1009847</td><td>0.299136</td><td>3</td><td>2.667</td><td>2.667</td></tr>
+<tr><td>Explore</td><td>agent</td><td>222858</td><td>223229</td><td>0.066125</td><td>1</td><td>3</td><td>3</td></tr>
+<tr><td>extract_memories</td><td>memory</td><td>133721</td><td>135146</td><td>0.040033</td><td>1</td><td>3</td><td>3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>最近用户动作</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>user_action_id</th><th>duration_ms</th><th>query_count</th><th>main_thread_query_count</th><th>subagent_count</th><th>total_prompt_input_tokens</th><th>total_billed_tokens</th></tr></thead>
+      <tbody>
+        <tr><td>c27626a1-a2d0-46f5-8faf-c39370255036</td><td>234875</td><td>3</td><td>1</td><td>2</td><td>1591885</td><td>1599671</td></tr>
+<tr><td>036e4c84-da48-4da3-a5e3-1362d9eb6255</td><td>316327</td><td>4</td><td>1</td><td>3</td><td>1769913</td><td>1776212</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>按 Source Query 概览</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>query_source</th><th>query_count</th><th>total_duration_ms</th><th>total_tool_calls</th></tr></thead>
+      <tbody>
+        <tr><td>session_memory</td><td>3</td><td>279359</td><td>19</td></tr>
+<tr><td>repl_main_thread</td><td>2</td><td>482197</td><td>14</td></tr>
+<tr><td>agent:builtin:Explore</td><td>1</td><td>25708</td><td>6</td></tr>
+<tr><td>extract_memories</td><td>1</td><td>69005</td><td>3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>Subagent Reason 明细</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>subagent_reason</th><th>agent_name</th><th>subagent_count</th><th>avg_duration_ms</th></tr></thead>
+      <tbody>
+        <tr><td>session_memory</td><td>session_memory</td><td>3</td><td>93119.333</td></tr>
+<tr><td>extract_memories</td><td>extract_memories</td><td>1</td><td>69005</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>工具按名称统计</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>tool_name</th><th>tool_calls</th><th>tool_success_rate</th><th>tool_failure_rate</th><th>tool_avg_duration_ms</th><th>tool_p95_duration_ms</th></tr></thead>
+      <tbody>
+        <tr><td>Edit</td><td>16</td><td>1</td><td>0</td><td>30.875</td><td>50.75</td></tr>
+<tr><td>Bash</td><td>11</td><td>0.818182</td><td>0</td><td>9721</td><td>28616.8</td></tr>
+<tr><td>Read</td><td>7</td><td>0.857143</td><td>0</td><td>23.333</td><td>48.25</td></tr>
+<tr><td>Glob</td><td>5</td><td>1</td><td>0</td><td>5070.4</td><td>6671.2</td></tr>
+<tr><td>Agent</td><td>1</td><td>1</td><td>0</td><td>62</td><td>62</td></tr>
+<tr><td>Grep</td><td>1</td><td>0</td><td>0</td><td>null</td><td>null</td></tr>
+<tr><td>Write</td><td>1</td><td>1</td><td>0</td><td>27</td><td>27</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>工具按模式统计</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>tool_mode</th><th>tool_calls</th></tr></thead>
+      <tbody>
+        <tr><td>streaming</td><td>18</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+    <section class="panel">
+  <h3>终止原因分布</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>terminal_reason</th><th>query_count</th></tr></thead>
+      <tbody>
+        <tr><td>completed</td><td>6</td></tr>
+<tr><td>aborted_tools</td><td>1</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+    <section class="panel">
+      <h2>指标说明</h2>
+      <p class="muted">每张卡片右上角的“说明”都会跳到这里。这里优先解释最容易误解、最容易影响判断的指标，尤其是 token 成本口径。</p>
+      <div class="metric-docs">
+        <section class="metric-doc" id="metric-event_count">
+  <h3>事件数</h3>
+  <p><strong>含义：</strong>当天成功入库的结构化事件总数。</p>
+  <p><strong>举例：</strong>例：375 代表这批样本里被 ETL 吃进去的事件一共有 375 条。</p>
+</section>
+<section class="metric-doc" id="metric-user_action_count">
+  <h3>用户动作数</h3>
+  <p><strong>含义：</strong>能被同一个 user_action_id 串起来的用户动作数量。</p>
+  <p><strong>举例：</strong>例：2 代表今天样本中有 2 次独立用户动作。</p>
+</section>
+<section class="metric-doc" id="metric-query_count">
+  <h3>Query 数</h3>
+  <p><strong>含义：</strong>当天成功识别出来的 query 生命周期实体数量。</p>
+  <p><strong>举例：</strong>例：6 代表这批样本里一共识别出 6 个 query。</p>
+</section>
+<section class="metric-doc" id="metric-turn_count">
+  <h3>Turn 数</h3>
+  <p><strong>含义：</strong>当天成功识别出来的 turn 数量。</p>
+  <p><strong>举例：</strong>例：12 说明 query 们一共走了 12 轮 turn。</p>
+</section>
+<section class="metric-doc" id="metric-tool_calls_total">
+  <h3>工具调用数</h3>
+  <p><strong>含义：</strong>当天工具调用总数。</p>
+  <p><strong>举例：</strong>例：9 说明主线程和 subagent 合计触发了 9 次工具调用。</p>
+</section>
+<section class="metric-doc" id="metric-subagent_count">
+  <h3>Subagent 数</h3>
+  <p><strong>含义：</strong>当天成功识别到的 subagent 生命周期数量。</p>
+  <p><strong>举例：</strong>例：4 说明共有 4 次子代理任务被创建。</p>
+</section>
+<section class="metric-doc" id="metric-strict_query_completion_rate">
+  <h3>严格 Query 完成率</h3>
+  <p><strong>含义：</strong>只按原始 query_id 检查，同一个 query_id 是否同时出现 query.started 和 query.terminated。</p>
+  <p><strong>举例：</strong>例：如果 terminated 丢了原始 query_id，这个值会偏低。</p>
+</section>
+<section class="metric-doc" id="metric-inferred_query_completion_rate">
+  <h3>推断 Query 完成率</h3>
+  <p><strong>含义：</strong>允许使用 effective_query_id 补链后的 query 闭合率。</p>
+  <p><strong>举例：</strong>例：它告诉你‘分析层是否还能把链串起来’，通常会高于严格口径。</p>
+</section>
+<section class="metric-doc" id="metric-query_completeness_gap">
+  <h3>Query 补链差值</h3>
+  <p><strong>含义：</strong>推断 Query 完成率减去原生 Query 完成率。</p>
+  <p><strong>举例：</strong>例：0.3 代表 ETL 补链帮你多恢复了 30% 的 query 闭合。</p>
+</section>
+<section class="metric-doc" id="metric-strict_turn_state_closure_rate">
+  <h3>严格 Turn 闭合率</h3>
+  <p><strong>含义：</strong>只按原始 query_id + turn_id 检查 turn.started / before_turn / after_turn 三件套是否齐全。</p>
+  <p><strong>举例：</strong>例：最后一轮缺 after_turn 时，这个值就会下降。</p>
+</section>
+<section class="metric-doc" id="metric-inferred_turn_state_closure_rate">
+  <h3>推断 Turn 闭合率</h3>
+  <p><strong>含义：</strong>允许用 effective_query_id 做补链后的 turn 闭合率。</p>
+  <p><strong>举例：</strong>例：它反映 ETL 是否还能拼出 turn 生命周期。</p>
+</section>
+<section class="metric-doc" id="metric-turn_closure_gap">
+  <h3>Turn 补链差值</h3>
+  <p><strong>含义：</strong>推断 Turn 闭合率减去原生 Turn 闭合率。</p>
+  <p><strong>举例：</strong>例：值越大，说明缺 query_id/turn_id 的事件越多。</p>
+</section>
+<section class="metric-doc" id="metric-tool_lifecycle_closure_rate">
+  <h3>工具闭合率</h3>
+  <p><strong>含义：</strong>工具调用中，从 started 走到 completed 或 failed 的比例。</p>
+  <p><strong>举例：</strong>例：1.0 代表工具调用生命周期全部闭合。</p>
+</section>
+<section class="metric-doc" id="metric-subagent_lifecycle_closure_rate">
+  <h3>Subagent 闭合率</h3>
+  <p><strong>含义：</strong>subagent 同时出现 spawned 和 completed 的比例。</p>
+  <p><strong>举例：</strong>例：1.0 代表子代理生命周期全部闭合。</p>
+</section>
+<section class="metric-doc" id="metric-snapshot_missing_rate">
+  <h3>Snapshot 缺失率</h3>
+  <p><strong>含义：</strong>事件引用了 snapshot_ref，但本地找不到对应快照文件的比例。</p>
+  <p><strong>举例：</strong>例：0 代表这批样本没有缺快照。</p>
+</section>
+<section class="metric-doc" id="metric-orphan_event_rate">
+  <h3>Orphan Event 率</h3>
+  <p><strong>含义：</strong>无法挂靠到 user_action / query / turn / tool / subagent 的孤儿事件比例。</p>
+  <p><strong>举例：</strong>例：值高时说明基础埋点键缺失严重。</p>
+</section>
+<section class="metric-doc" id="metric-raw_input_tokens">
+  <h3>裸 Input Tokens</h3>
+  <p><strong>含义：</strong>模型 usage 里的 input_tokens 原值，不包含 cache read 和 cache create。</p>
+  <p><strong>举例：</strong>例：你看到它只有 153，并不代表这次输入很小，只代表</p>
+</section>
+<section class="metric-doc" id="metric-cache_read_tokens">
+  <h3>Cache Read Tokens</h3>
+  <p><strong>含义：</strong>本轮请求从 prompt cache 直接复用的输入 tokens。</p>
+  <p><strong>举例：</strong>例：如果一个很长的 system prompt 被缓存复用，这里会很大，而裸 input 仍可能很小。</p>
+</section>
+<section class="metric-doc" id="metric-cache_create_tokens">
+  <h3>Cache Create Tokens</h3>
+  <p><strong>含义：</strong>本轮请求为了创建或刷新 prompt cache 而计入的输入 tokens。</p>
+  <p><strong>举例：</strong>例：第一次跑一段长 prompt 时，这里可能会突然升高。</p>
+</section>
+<section class="metric-doc" id="metric-total_prompt_input_tokens">
+  <h3>总 Prompt 输入 Tokens</h3>
+  <p><strong>含义：</strong>真正建议优先看的输入成本。= 裸 input + cache read + cache create。</p>
+  <p><strong>举例：</strong>例：裸 input 153、cache read 245210、cache create 219661，则总 prompt 输入是 465024。</p>
+</section>
+<section class="metric-doc" id="metric-output_tokens">
+  <h3>Output Tokens</h3>
+  <p><strong>含义：</strong>模型输出的 tokens 总量。</p>
+  <p><strong>举例：</strong>例：如果 output 只有 3027，而总 prompt 输入是 46.5 万，说明成本瓶颈主要在输入侧。</p>
+</section>
+<section class="metric-doc" id="metric-total_billed_tokens">
+  <h3>总 Billed Tokens</h3>
+  <p><strong>含义：</strong>总 prompt 输入 tokens 再加 output tokens 后形成的总账单口径。</p>
+  <p><strong>举例：</strong>例：465024 + 3027 = 468051。</p>
+</section>
+<section class="metric-doc" id="metric-main_thread_prompt_tokens">
+  <h3>主线程 Prompt 输入</h3>
+  <p><strong>含义：</strong>只统计 epl_main_thread 的总 prompt 输入 tokens。</p>
+  <p><strong>举例：</strong>例：它能让你看清主线程本身有多贵。</p>
+</section>
+<section class="metric-doc" id="metric-subagent_prompt_tokens">
+  <h3>Subagent Prompt 输入</h3>
+  <p><strong>含义：</strong>只统计非 epl_main_thread 的总 prompt 输入 tokens。</p>
+  <p><strong>举例：</strong>例：如果它远高于主线程，说明 memory / side query 链路在放大成本。</p>
+</section>
+<section class="metric-doc" id="metric-subagent_amplification_ratio">
+  <h3>Subagent 放大倍率</h3>
+  <p><strong>含义：</strong>subagent 总 prompt 输入 tokens / 主线程总 prompt 输入 tokens。</p>
+  <p><strong>举例：</strong>例：5.3 代表 memory / side query 等子链路把输入成本放大到了主线程的 5.3 倍。</p>
+</section>
+<section class="metric-doc" id="metric-avg_prompt_input_per_user_action">
+  <h3>每个用户动作平均 Prompt 输入</h3>
+  <p><strong>含义：</strong>每天总 prompt 输入成本除以当天 user_action 数。</p>
+  <p><strong>举例：</strong>例：它能快速回答‘平均一次用户动作要吃多少输入成本’。</p>
+</section>
+<section class="metric-doc" id="metric-avg_billed_per_user_action">
+  <h3>每个用户动作平均 Billed</h3>
+  <p><strong>含义：</strong>每天总 billed tokens 除以当天 user_action 数。</p>
+  <p><strong>举例：</strong>例：适合看整天的平均账单压力。</p>
+</section>
+<section class="metric-doc" id="metric-avg_prompt_input_per_query">
+  <h3>每个 Query 平均 Prompt 输入</h3>
+  <p><strong>含义：</strong>每天所有 query 的平均总 prompt 输入成本。</p>
+  <p><strong>举例：</strong>例：它能区分‘今天 query 变多’和‘单个 query 变贵’。</p>
+</section>
+<section class="metric-doc" id="metric-avg_billed_per_query">
+  <h3>每个 Query 平均 Billed</h3>
+  <p><strong>含义：</strong>每天所有 query 的平均 billed tokens。</p>
+  <p><strong>举例：</strong>例：如果这个值升高，说明单个 query 的综合成本变重了。</p>
+</section>
+<section class="metric-doc" id="metric-submit_to_first_chunk_ms">
+  <h3>Submit 到 First Chunk</h3>
+  <p><strong>含义：</strong>一次用户动作从当前可闭合起点到主线程 first chunk 的平均时长。</p>
+  <p><strong>举例：</strong>例：这个值高说明用户等到首字节的时间长。</p>
+</section>
+<section class="metric-doc" id="metric-preprocess_duration_ms">
+  <h3>Preprocess 时长</h3>
+  <p><strong>含义：</strong>从预处理开始到 prompt.build.started 的平均时长。</p>
+  <p><strong>举例：</strong>例：值高说明消息裁剪、压缩或上下文整理耗时较多。</p>
+</section>
+<section class="metric-doc" id="metric-prompt_build_duration_ms">
+  <h3>Prompt.Build 时长</h3>
+  <p><strong>含义：</strong>从 prompt.build.started 到 prompt.build.completed 的平均时长。</p>
+  <p><strong>举例：</strong>例：值高说明提示词拼装和序列化成本较高。</p>
+</section>
+<section class="metric-doc" id="metric-api_first_chunk_latency_ms">
+  <h3>Request 到 First Chunk</h3>
+  <p><strong>含义：</strong>从 API 请求发起到首个流式 chunk 返回的平均时长。</p>
+  <p><strong>举例：</strong>例：它主要反映模型首字延迟。</p>
+</section>
+<section class="metric-doc" id="metric-api_total_duration_ms">
+  <h3>API 总时长</h3>
+  <p><strong>含义：</strong>单轮 request 从发起到流式完成的平均时长。</p>
+  <p><strong>举例：</strong>例：如果它很高，再看工具/恢复链才能知道慢在哪里。</p>
+</section>
+<section class="metric-doc" id="metric-tool_execution_duration_ms">
+  <h3>工具执行平均时长</h3>
+  <p><strong>含义：</strong>所有工具调用的平均执行时长。</p>
+  <p><strong>举例：</strong>例：值高时通常要看慢工具明细。</p>
+</section>
+<section class="metric-doc" id="metric-stop_hook_duration_ms">
+  <h3>Stop Hooks 平均时长</h3>
+  <p><strong>含义：</strong>stop hook 生命周期的平均时长。</p>
+  <p><strong>举例：</strong>例：值高说明停止逻辑本身在拖慢响应。</p>
+</section>
+<section class="metric-doc" id="metric-subagent_duration_ms">
+  <h3>Subagent 生命周期均值</h3>
+  <p><strong>含义：</strong>subagent 从 spawned 到 completed 的平均时长。</p>
+  <p><strong>举例：</strong>例：值高通常意味着 memory 相关子链路比较慢。</p>
+</section>
+<section class="metric-doc" id="metric-user_action_e2e_duration_ms">
+  <h3>User Action E2E</h3>
+  <p><strong>含义：</strong>一次用户动作从最早事件到最晚事件的端到端平均时长。</p>
+  <p><strong>举例：</strong>例：这是用户真正感受到的总耗时。</p>
+</section>
+<section class="metric-doc" id="metric-daily_avg_turns_per_query">
+  <h3>每日平均 Turn/Query</h3>
+  <p><strong>含义：</strong>按 query 统计的平均 turn 数。</p>
+  <p><strong>举例：</strong>例：值高可能意味着更常见的多轮循环。</p>
+</section>
+<section class="metric-doc" id="metric-daily_avg_loop_iter_end">
+  <h3>每日平均 Loop 终点</h3>
+  <p><strong>含义：</strong>每个 query 的最大 loop_iter 再求平均。</p>
+  <p><strong>举例：</strong>例：它能区分‘prompt 大’和‘因为多轮 loop 导致成本高’。</p>
+</section>
+<section class="metric-doc" id="metric-daily_p95_loop_iter_end">
+  <h3>每日 Loop 终点 P95</h3>
+  <p><strong>含义：</strong>query_max_loop_iter 的 P95。</p>
+  <p><strong>举例：</strong>例：它比平均值更容易看出少数长链 loop。</p>
+</section>
+<section class="metric-doc" id="metric-daily_queries_with_loop_iter_gt_1_rate">
+  <h3>多轮 Query 占比</h3>
+  <p><strong>含义：</strong>query_max_loop_iter &gt; 1 的 query 占比。</p>
+  <p><strong>举例：</strong>例：0.6 代表 60% 的 query 至少循环了 2 轮。</p>
+</section>
+<section class="metric-doc" id="metric-preprocess_tokens_before_total">
+  <h3>Preprocess 前 Tokens</h3>
+  <p><strong>含义：</strong>进入上下文治理前的估算 token 总量。</p>
+  <p><strong>举例：</strong>例：它是判断压缩压力的起点。</p>
+</section>
+<section class="metric-doc" id="metric-preprocess_tokens_after_total">
+  <h3>Preprocess 后 Tokens</h3>
+  <p><strong>含义：</strong>经过上下文治理后的估算 token 总量。</p>
+  <p><strong>举例：</strong>例：和前值对比可以看出压缩是否生效。</p>
+</section>
+<section class="metric-doc" id="metric-tokens_saved_total">
+  <h3>总节省 Tokens</h3>
+  <p><strong>含义：</strong>预处理阶段累计节省的 tokens 总量。</p>
+  <p><strong>举例：</strong>例：如果是 0，代表这批样本里压缩动作没有明显节省。</p>
+</section>
+<section class="metric-doc" id="metric-compression_gain_ratio">
+  <h3>压缩收益率</h3>
+  <p><strong>含义：</strong>preprocess 前后 token 总量的节省比例。</p>
+  <p><strong>举例：</strong>例：0.2 代表 preprocess 后上下文整体缩短了 20%。</p>
+</section>
+<section class="metric-doc" id="metric-autocompact_trigger_rate">
+  <h3>Autocompact 触发率</h3>
+  <p><strong>含义：</strong>messages.autoconpact.completed 中 compacted = true 的比例。</p>
+  <p><strong>举例：</strong>例：值高说明上下文压力大，经常需要自动压缩。</p>
+</section>
+<section class="metric-doc" id="metric-history_snip_gate_state">
+  <h3>HISTORY_SNIP Gate 状态</h3>
+  <p><strong>含义：</strong>当前样本里是否观察到 HISTORY_SNIP 命中。</p>
+  <p><strong>举例：</strong>例：‘样本中观察到命中’说明这批日志里 gate 至少生效过一次。</p>
+</section>
+<section class="metric-doc" id="metric-contextCollapse_enabled_gauge">
+  <h3>contextCollapse 启用状态</h3>
+  <p><strong>含义：</strong>当前按源码真相给出。0 代表 disabled / stub，不应被解释成真实已启用。</p>
+  <p><strong>举例：</strong>例：即使日志里有相关痕迹，这里仍必须显示 0。</p>
+</section>
+<section class="metric-doc" id="metric-tool_success_rate">
+  <h3>工具成功率</h3>
+  <p><strong>含义：</strong>工具调用中 success = true 的比例。</p>
+  <p><strong>举例：</strong>例：如果它下降，就该优先排查失败最多的工具。</p>
+</section>
+<section class="metric-doc" id="metric-tool_failure_rate">
+  <h3>工具失败率</h3>
+  <p><strong>含义：</strong>工具调用中 failed 的比例。</p>
+  <p><strong>举例：</strong>例：它和工具成功率一起决定工具层健康度。</p>
+</section>
+<section class="metric-doc" id="metric-tool_avg_duration_ms">
+  <h3>工具平均时长</h3>
+  <p><strong>含义：</strong>按所有工具调用计算的平均执行时长。</p>
+  <p><strong>举例：</strong>例：适合快速判断工具层是否整体变慢。</p>
+</section>
+<section class="metric-doc" id="metric-tool_p95_duration_ms">
+  <h3>工具 P95 时长</h3>
+  <p><strong>含义：</strong>工具执行时长的 P95。</p>
+  <p><strong>举例：</strong>例：它比平均值更容易暴露长尾慢调用。</p>
+</section>
+<section class="metric-doc" id="metric-tools_per_query">
+  <h3>每个 Query 的工具数</h3>
+  <p><strong>含义：</strong>平均每个 query 触发多少次工具调用。</p>
+  <p><strong>举例：</strong>例：值高说明 query 更依赖工具链。</p>
+</section>
+<section class="metric-doc" id="metric-tools_per_subagent">
+  <h3>每个 Subagent 的工具数</h3>
+  <p><strong>含义：</strong>平均每个 subagent 触发多少次工具调用。</p>
+  <p><strong>举例：</strong>例：它能看出子代理是否重度依赖工具。</p>
+</section>
+<section class="metric-doc" id="metric-tool_followup_turn_ratio">
+  <h3>工具后续驱动率</h3>
+  <p><strong>含义：</strong>包含 tool_use 的 turn 中，最终 transition_out = next_turn 的比例。</p>
+  <p><strong>举例：</strong>例：值高说明工具确实在驱动下一轮 loop。</p>
+</section>
+<section class="metric-doc" id="metric-prompt_too_long_recovery_attempts">
+  <h3>Prompt Too Long 恢复次数</h3>
+  <p><strong>含义：</strong>恢复链里与 prompt_too_long 相关的尝试次数。</p>
+  <p><strong>举例：</strong>例：如果这个值持续升高，说明 prompt 治理本身有问题。</p>
+</section>
+<section class="metric-doc" id="metric-max_output_tokens_recovery_attempts">
+  <h3>Max Output Tokens 恢复次数</h3>
+  <p><strong>含义：</strong>恢复链里与 max_output_tokens 相关的尝试次数。</p>
+  <p><strong>举例：</strong>例：值高说明输出上限策略经常撞线。</p>
+</section>
+<section class="metric-doc" id="metric-token_budget_continue_rate">
+  <h3>Token Budget Continue Rate</h3>
+  <p><strong>含义：</strong>token_budget.decision 中 action = continue 的比例。</p>
+  <p><strong>举例：</strong>例：值高说明系统经常需要续跑才能完成响应。</p>
+</section>
+<section class="metric-doc" id="metric-stop_hook_block_rate">
+  <h3>Stop Hook Block Rate</h3>
+  <p><strong>含义：</strong>stop hook 最终阻止继续执行的比例。</p>
+  <p><strong>举例：</strong>例：值高时说明停止逻辑频繁打断主链。</p>
+</section>
+<section class="metric-doc" id="metric-api_error_rate">
+  <h3>API Error Rate</h3>
+  <p><strong>含义：</strong>API 调用阶段错误的比例。</p>
+  <p><strong>举例：</strong>例：这个值非零时要优先检查模型请求和网络错误。</p>
+</section>
+<section class="metric-doc" id="metric-tool_failure_terminal_rate">
+  <h3>Tool Failure Terminal Rate</h3>
+  <p><strong>含义：</strong>工具失败后直接导致 query 终止的比例。</p>
+  <p><strong>举例：</strong>例：值高说明工具失败很难恢复。</p>
+</section>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

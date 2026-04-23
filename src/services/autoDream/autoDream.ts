@@ -228,6 +228,12 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}`
         canUseTool: createAutoMemCanUseTool(memoryRoot),
         querySource: 'auto_dream',
         forkLabel: 'auto_dream',
+        subagentReason: 'auto_dream',
+        subagentTriggerKind: 'stop_hook_background',
+        subagentTriggerDetail: 'dream_consolidation_run',
+        subagentTriggerPayload: {
+          sessions_reviewing: sessionIds.length,
+        },
         skipTranscript: true,
         overrides: { abortController },
         onMessage: makeDreamProgressWatcher(taskId, setAppState),

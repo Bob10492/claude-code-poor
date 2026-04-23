@@ -120,6 +120,13 @@ export function startAgentSummarization(
         canUseTool,
         querySource: 'agent_summary',
         forkLabel: 'agent_summary',
+        subagentReason: 'agent_summary',
+        subagentTriggerKind: 'periodic_timer',
+        subagentTriggerDetail: 'summary_interval_elapsed',
+        subagentTriggerPayload: {
+          summary_interval_ms: SUMMARY_INTERVAL_MS,
+          transcript_message_count: cleanMessages.length,
+        },
         overrides: { abortController: summaryAbortController },
         skipTranscript: true,
       })

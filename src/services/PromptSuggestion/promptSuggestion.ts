@@ -167,6 +167,17 @@ export async function tryGenerateSuggestion(
     abortController,
     promptId,
     cacheSafeParams,
+    {
+      kind: source === 'cli' ? 'stop_hook_background' : 'direct_feature_entry',
+      detail:
+        source === 'cli'
+          ? 'suggestion_generation_allowed'
+          : 'suggestion_generation_direct',
+      payload: {
+        source: source ?? 'unknown',
+        assistant_turn_count: assistantTurnCount,
+      },
+    },
   )
   if (abortController.signal.aborted) {
     logSuggestionSuppressed('aborted', undefined, undefined, source)
@@ -295,6 +306,11 @@ export async function generateSuggestion(
   abortController: AbortController,
   promptId: PromptVariant,
   cacheSafeParams: CacheSafeParams,
+  triggerInfo?: {
+    kind?: string
+    detail?: string
+    payload?: Record<string, unknown>
+  },
 ): Promise<{ suggestion: string | null; generationRequestId: string | null }> {
   const prompt = SUGGESTION_PROMPTS[promptId]
 
@@ -322,6 +338,10 @@ export async function generateSuggestion(
     canUseTool,
     querySource: 'prompt_suggestion',
     forkLabel: 'prompt_suggestion',
+    subagentReason: 'prompt_suggestion',
+    subagentTriggerKind: triggerInfo?.kind ?? undefined,
+    subagentTriggerDetail: triggerInfo?.detail ?? undefined,
+    subagentTriggerPayload: triggerInfo?.payload,
     overrides: {
       abortController,
     },

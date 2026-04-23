@@ -32,6 +32,9 @@ export type HarnessEventInput = {
   parent_turn_id?: string | null
   subagent_id?: string | null
   subagent_type?: string | null
+  subagent_reason?: string | null
+  subagent_trigger_kind?: string | null
+  subagent_trigger_detail?: string | null
   query_source?: string | null
   request_id?: string | null
   tool_call_id?: string | null
@@ -142,6 +145,9 @@ export async function emitHarnessEvent(
     parent_turn_id: input.parent_turn_id ?? null,
     subagent_id: input.subagent_id ?? null,
     subagent_type: input.subagent_type ?? null,
+    subagent_reason: input.subagent_reason ?? null,
+    subagent_trigger_kind: input.subagent_trigger_kind ?? null,
+    subagent_trigger_detail: input.subagent_trigger_detail ?? null,
     query_source: input.query_source ?? null,
     request_id: input.request_id ?? null,
     tool_call_id: input.tool_call_id ?? null,

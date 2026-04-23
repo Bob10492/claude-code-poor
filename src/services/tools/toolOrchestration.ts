@@ -27,6 +27,7 @@ export async function* runTools(
   await emitHarnessEvent({
     event: 'tool.batch.started',
     component: 'tool_orchestration',
+    user_action_id: toolUseContext.userActionId ?? null,
     query_id: toolUseContext.queryTracking?.chainId ?? null,
     subagent_id: toolUseContext.agentId ?? null,
     subagent_type: toolUseContext.agentType ?? null,
@@ -55,6 +56,7 @@ export async function* runTools(
     await emitHarnessEvent({
       event: 'tool.execution.mode.selected',
       component: 'tool_orchestration',
+      user_action_id: currentContext.userActionId ?? null,
       query_id: currentContext.queryTracking?.chainId ?? null,
       subagent_id: currentContext.agentId ?? null,
       subagent_type: currentContext.agentType ?? null,
@@ -102,6 +104,7 @@ export async function* runTools(
         await emitHarnessEvent({
           event: 'tool.context.updated',
           component: 'tool_orchestration',
+          user_action_id: currentContext.userActionId ?? null,
           query_id: currentContext.queryTracking?.chainId ?? null,
           subagent_id: currentContext.agentId ?? null,
           subagent_type: currentContext.agentType ?? null,
@@ -132,6 +135,7 @@ export async function* runTools(
       await emitHarnessEvent({
         event: 'tool.context.updated',
         component: 'tool_orchestration',
+        user_action_id: currentContext.userActionId ?? null,
         query_id: currentContext.queryTracking?.chainId ?? null,
         subagent_id: currentContext.agentId ?? null,
         subagent_type: currentContext.agentType ?? null,

@@ -3185,6 +3185,7 @@ export function REPL({
       additionalAllowedTools: string[],
       mainLoopModelParam: string,
       effort?: EffortValue,
+      userActionId?: UUID,
     ) => {
       // Prepare IDE integration for new prompt. Read mcpClients fresh from
       // store — useManageMCPConnections may have populated it since the
@@ -3293,6 +3294,9 @@ export function REPL({
         abortController,
         mainLoopModelParam,
       );
+      toolUseContext.userActionId =
+        userActionId ??
+        newMessages.find((message): message is UserMessage => message.type === 'user')?.uuid;
       // getToolUseContext reads tools/mcpClients fresh from store.getState()
       // (via computeTools/mergeClients). Use those rather than the closure-
       // captured `tools`/`mcpClients` — useManageMCPConnections may have
@@ -3469,6 +3473,7 @@ export function REPL({
       onBeforeQueryCallback?: (input: string, newMessages: MessageType[]) => Promise<boolean>,
       input?: string,
       effort?: EffortValue,
+      userActionId?: UUID,
     ): Promise<void> => {
       // If this is a teammate, mark them as active when starting a turn
       if (isAgentSwarmsEnabled()) {
@@ -3546,6 +3551,7 @@ export function REPL({
             additionalAllowedTools,
             mainLoopModelParam,
             effort,
+            userActionId,
           );
         } catch (error) {
           if (feature('UDS_INBOX')) {

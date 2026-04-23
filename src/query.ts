@@ -156,6 +156,53 @@ function* yieldMissingToolResultBlocks(
   }
 }
 
+async function emitAbandonedToolUseEvents({
+  assistantMessages,
+  toolUseContext,
+  queryId,
+  querySource,
+  turnId,
+  loopIter,
+  reason,
+}: {
+  assistantMessages: AssistantMessage[]
+  toolUseContext: ToolUseContext
+  queryId: string
+  querySource: QuerySource
+  turnId: string
+  loopIter: number
+  reason: string
+}): Promise<void> {
+  for (const assistantMessage of assistantMessages) {
+    const toolUseBlocks = (Array.isArray(assistantMessage.message?.content)
+      ? assistantMessage.message.content
+      : []
+    ).filter((content: { type: string }) => content.type === 'tool_use') as ToolUseBlock[]
+
+    for (const toolUse of toolUseBlocks) {
+      await emitHarnessEvent({
+        event: 'tool.execution.failed',
+        component: 'query_loop',
+        user_action_id: toolUseContext.userActionId ?? null,
+        query_id: queryId,
+        turn_id: turnId,
+        loop_iter: loopIter,
+        query_source: querySource,
+        request_id: asOptionalString(assistantMessage.requestId),
+        tool_call_id: toolUse.id,
+        subagent_id: toolUseContext.agentId ?? null,
+        subagent_type: toolUseContext.agentType ?? null,
+        payload: {
+          tool_name: toolUse.name,
+          success: false,
+          error: reason,
+          duration_ms: 0,
+        },
+      })
+    }
+  }
+}
+
 /**
  * The rules of thinking are lengthy and fortuitous. They require plenty of thinking
  * of most long duration and deep meditation for a wizard to wrap one's noggin around.
@@ -287,6 +334,7 @@ async function emitMessageStageEvent({
   component,
   before,
   after,
+  userActionId,
   queryId,
   turnId,
   loopIter,
@@ -297,6 +345,7 @@ async function emitMessageStageEvent({
   component: string
   before: Message[]
   after: Message[]
+  userActionId?: string | null
   queryId: string
   turnId: string
   loopIter: number
@@ -312,6 +361,7 @@ async function emitMessageStageEvent({
   await emitHarnessEvent({
     event,
     component,
+    user_action_id: userActionId ?? null,
     query_id: queryId,
     turn_id: turnId,
     loop_iter: loopIter,
@@ -370,6 +420,7 @@ async function emitStateSnapshotEvent({
   await emitHarnessEvent({
     event,
     component: 'query_loop',
+    user_action_id: state.toolUseContext.userActionId ?? null,
     query_id: queryId,
     turn_id: turnId,
     loop_iter: loopIter,
@@ -414,6 +465,7 @@ async function emitStateTransitionEvent({
   await emitHarnessEvent({
     event: 'state.transitioned',
     component: 'query_loop',
+    user_action_id: toState.toolUseContext.userActionId ?? null,
     query_id: queryId,
     turn_id: turnId,
     loop_iter: loopIter,
@@ -589,6 +641,7 @@ async function* queryLoop(
   await emitHarnessEvent({
     event: 'state.initialized',
     component: 'query_loop',
+    user_action_id: state.toolUseContext.userActionId ?? null,
     query_source: querySource,
     turn_id: 'turn-1',
     loop_iter: 1,
@@ -612,6 +665,7 @@ async function* queryLoop(
   await emitHarnessEvent({
     event: 'prefetch.memory.started',
     component: 'query_loop',
+    user_action_id: state.toolUseContext.userActionId ?? null,
     query_source: querySource,
     payload: {
       message_count: state.messages.length,
@@ -622,20 +676,44 @@ async function* queryLoop(
   async function emitQueryTerminated(
     reason: string,
     extraPayload?: Record<string, unknown>,
+    options?: {
+      finalMessages?: Message[]
+    },
   ): Promise<void> {
+    const terminalState: State = options?.finalMessages
+      ? {
+          ...state,
+          messages: options.finalMessages,
+        }
+      : state
+    const terminalQueryId =
+      terminalState.toolUseContext.queryTracking?.chainId ??
+      state.toolUseContext.queryTracking?.chainId ??
+      'unknown'
+
+    await emitStateSnapshotEvent({
+      event: 'state.snapshot.after_turn',
+      state: terminalState,
+      queryId: terminalQueryId,
+      turnId: `turn-${terminalState.turnCount}`,
+      loopIter: terminalState.turnCount,
+      querySource,
+    })
+
     await emitHarnessEvent({
       event: 'query.terminated',
       component: 'query_loop',
+      user_action_id: terminalState.toolUseContext.userActionId ?? null,
       query_source: querySource,
-      query_id: state.toolUseContext.queryTracking?.chainId ?? null,
-      turn_id: `turn-${state.turnCount}`,
-      loop_iter: state.turnCount,
-      subagent_id: state.toolUseContext.agentId ?? null,
-      subagent_type: state.toolUseContext.agentType ?? null,
+      query_id: terminalState.toolUseContext.queryTracking?.chainId ?? null,
+      turn_id: `turn-${terminalState.turnCount}`,
+      loop_iter: terminalState.turnCount,
+      subagent_id: terminalState.toolUseContext.agentId ?? null,
+      subagent_type: terminalState.toolUseContext.agentType ?? null,
       payload: {
         reason,
-        final_message_count: state.messages.length,
-        transition: state.transition?.reason ?? null,
+        final_message_count: terminalState.messages.length,
+        transition: terminalState.transition?.reason ?? null,
         ...extraPayload,
       },
     })
@@ -700,10 +778,11 @@ async function* queryLoop(
       ...toolUseContext,
       queryTracking,
     }
-    if (queryTracking.depth === 0) {
+    if (turnCount === 1) {
       await emitHarnessEvent({
         event: 'query.started',
         component: 'query_loop',
+        user_action_id: toolUseContext.userActionId ?? null,
         query_id: queryTracking.chainId,
         turn_id: turnId,
         loop_iter: turnCount,
@@ -721,6 +800,7 @@ async function* queryLoop(
     await emitHarnessEvent({
       event: 'query_tracking.assigned',
       component: 'query_loop',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: queryTracking.chainId,
       turn_id: turnId,
       loop_iter: turnCount,
@@ -733,6 +813,7 @@ async function* queryLoop(
     await emitHarnessEvent({
       event: 'turn.started',
       component: 'query_loop',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: queryTracking.chainId,
       turn_id: turnId,
       loop_iter: turnCount,
@@ -758,6 +839,7 @@ async function* queryLoop(
       component: 'query_loop',
       before: messages,
       after: messagesForQuery,
+      userActionId: toolUseContext.userActionId ?? null,
       queryId: queryTracking.chainId,
       turnId,
       loopIter: turnCount,
@@ -798,6 +880,7 @@ async function* queryLoop(
       component: 'query_loop',
       before: beforeToolResultBudget,
       after: messagesForQuery,
+      userActionId: toolUseContext.userActionId ?? null,
       queryId: queryTracking.chainId,
       turnId,
       loopIter: turnCount,
@@ -823,6 +906,7 @@ async function* queryLoop(
         component: 'query_loop',
         before: beforeSnip,
         after: messagesForQuery,
+        userActionId: toolUseContext.userActionId ?? null,
         queryId: queryTracking.chainId,
         turnId,
         loopIter: turnCount,
@@ -855,6 +939,7 @@ async function* queryLoop(
       component: 'query_loop',
       before: beforeMicrocompact,
       after: messagesForQuery,
+      userActionId: toolUseContext.userActionId ?? null,
       queryId: queryTracking.chainId,
       turnId,
       loopIter: turnCount,
@@ -890,6 +975,7 @@ async function* queryLoop(
         component: 'query_loop',
         before: beforeCollapse,
         after: messagesForQuery,
+        userActionId: toolUseContext.userActionId ?? null,
         queryId: queryTracking.chainId,
         turnId,
         loopIter: turnCount,
@@ -906,6 +992,7 @@ async function* queryLoop(
     await emitHarnessEvent({
       event: 'messages.autoconpact.checked',
       component: 'query_loop',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: queryTracking.chainId,
       turn_id: turnId,
       loop_iter: turnCount,
@@ -933,6 +1020,7 @@ async function* queryLoop(
     await emitHarnessEvent({
       event: 'messages.autoconpact.completed',
       component: 'query_loop',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: queryTracking.chainId,
       turn_id: turnId,
       loop_iter: turnCount,
@@ -1025,6 +1113,7 @@ async function* queryLoop(
       component: 'query_loop',
       before: messages,
       after: messagesForQuery,
+      userActionId: toolUseContext.userActionId ?? null,
       queryId: queryTracking.chainId,
       turnId,
       loopIter: turnCount,
@@ -1161,6 +1250,7 @@ async function* queryLoop(
           await emitHarnessEvent({
             event: 'prompt.build.started',
             component: 'query_loop',
+            user_action_id: toolUseContext.userActionId ?? null,
             query_id: queryTracking.chainId,
             turn_id: turnId,
             loop_iter: turnCount,
@@ -1183,6 +1273,7 @@ async function* queryLoop(
           await emitHarnessEvent({
             event: 'prompt.snapshot.stored',
             component: 'query_loop',
+            user_action_id: toolUseContext.userActionId ?? null,
             query_id: queryTracking.chainId,
             turn_id: turnId,
             loop_iter: turnCount,
@@ -1195,6 +1286,7 @@ async function* queryLoop(
           await emitHarnessEvent({
             event: 'prompt.build.completed',
             component: 'query_loop',
+            user_action_id: toolUseContext.userActionId ?? null,
             query_id: queryTracking.chainId,
             turn_id: turnId,
             loop_iter: turnCount,
@@ -1243,6 +1335,7 @@ async function* queryLoop(
           await emitHarnessEvent({
             event: 'api.request.started',
             component: 'query_loop',
+            user_action_id: toolUseContext.userActionId ?? null,
             query_id: queryTracking.chainId,
             turn_id: turnId,
             loop_iter: turnCount,
@@ -1324,6 +1417,7 @@ async function* queryLoop(
               await emitHarnessEvent({
                 event: 'api.stream.first_chunk',
                 component: 'query_loop',
+                user_action_id: toolUseContext.userActionId ?? null,
                 query_id: queryTracking.chainId,
                 turn_id: turnId,
                 loop_iter: turnCount,
@@ -1381,6 +1475,7 @@ async function* queryLoop(
                 await emitHarnessEvent({
                   event: 'assistant.block.received',
                   component: 'query_loop',
+                  user_action_id: toolUseContext.userActionId ?? null,
                   query_id: queryTracking.chainId,
                   turn_id: turnId,
                   loop_iter: turnCount,
@@ -1394,12 +1489,15 @@ async function* queryLoop(
                   await emitHarnessEvent({
                     event: 'assistant.tool_use.detected',
                     component: 'query_loop',
+                    user_action_id: toolUseContext.userActionId ?? null,
                     query_id: queryTracking.chainId,
                     turn_id: turnId,
                     loop_iter: turnCount,
                     query_source: querySource,
                     request_id: asOptionalString(assistantMsg.requestId),
                     tool_call_id: block.id,
+                    subagent_id: toolUseContext.agentId ?? null,
+                    subagent_type: toolUseContext.agentType ?? null,
                     payload: {
                       tool_name: block.name,
                     },
@@ -1534,6 +1632,7 @@ async function* queryLoop(
           await emitHarnessEvent({
             event: 'api.stream.completed',
             component: 'query_loop',
+            user_action_id: toolUseContext.userActionId ?? null,
             query_id: queryTracking.chainId,
             turn_id: turnId,
             loop_iter: turnCount,
@@ -1585,6 +1684,15 @@ async function* queryLoop(
               assistantMessages,
               'Model fallback triggered',
             )
+            await emitAbandonedToolUseEvents({
+              assistantMessages,
+              toolUseContext,
+              queryId: queryTracking.chainId,
+              querySource,
+              turnId,
+              loopIter: turnCount,
+              reason: 'model_fallback_triggered',
+            })
             assistantMessages.length = 0
             toolResults.length = 0
             toolUseBlocks.length = 0
@@ -1660,6 +1768,8 @@ async function* queryLoop(
         })
         await emitQueryTerminated('image_error', {
           error_message: error.message,
+        }, {
+          finalMessages: [...messagesForQuery, ...assistantMessages],
         })
         return { reason: 'image_error' }
       }
@@ -1669,6 +1779,15 @@ async function* queryLoop(
       // due to a bug, we may end up in a state where we have already emitted
       // a tool_use block but will stop before emitting the tool_result.
       yield* yieldMissingToolResultBlocks(assistantMessages, errorMessage)
+      await emitAbandonedToolUseEvents({
+        assistantMessages,
+        toolUseContext,
+        queryId: queryTracking.chainId,
+        querySource,
+        turnId,
+        loopIter: turnCount,
+        reason: 'query_error_before_tool_execution',
+      })
 
       // Surface the real error instead of a misleading "[Request interrupted
       // by user]" — this path is a model/runtime failure, not a user action.
@@ -1680,7 +1799,9 @@ async function* queryLoop(
 
       // To help track down bugs, log loudly for ants
       logAntError('Query error', error)
-      await emitQueryTerminated('model_error', { error_message: errorMessage })
+      await emitQueryTerminated('model_error', { error_message: errorMessage }, {
+        finalMessages: [...messagesForQuery, ...assistantMessages],
+      })
       return { reason: 'model_error', error }
     }
 
@@ -1714,6 +1835,15 @@ async function* queryLoop(
           assistantMessages,
           'Interrupted by user',
         )
+        await emitAbandonedToolUseEvents({
+          assistantMessages,
+          toolUseContext,
+          queryId: queryTracking.chainId,
+          querySource,
+          turnId,
+          loopIter: turnCount,
+          reason: 'interrupted_before_tool_execution',
+        })
       }
       // chicago MCP: auto-unhide + lock release on interrupt. Same cleanup
       // as the natural turn-end path in stopHooks.ts. Main thread only —
@@ -1736,7 +1866,9 @@ async function* queryLoop(
           toolUse: false,
         })
       }
-      await emitQueryTerminated('aborted_streaming')
+      await emitQueryTerminated('aborted_streaming', undefined, {
+        finalMessages: [...messagesForQuery, ...assistantMessages],
+      })
       return { reason: 'aborted_streaming' }
     }
 
@@ -1895,6 +2027,10 @@ async function* queryLoop(
         void executeStopFailureHooks(lastMessage!, toolUseContext)
         await emitQueryTerminated(
           isWithheldMedia ? 'image_error' : 'prompt_too_long',
+          undefined,
+          {
+            finalMessages: [...messagesForQuery, ...assistantMessages],
+          },
         )
         return { reason: isWithheldMedia ? 'image_error' : 'prompt_too_long' }
       } else if (feature('CONTEXT_COLLAPSE') && isWithheld413) {
@@ -1903,7 +2039,9 @@ async function* queryLoop(
         // early-return rationale — don't fall through to stop hooks.
         yield lastMessage
         void executeStopFailureHooks(lastMessage, toolUseContext)
-        await emitQueryTerminated('prompt_too_long')
+        await emitQueryTerminated('prompt_too_long', undefined, {
+          finalMessages: [...messagesForQuery, ...assistantMessages],
+        })
         return { reason: 'prompt_too_long' }
       }
 
@@ -2020,6 +2158,8 @@ async function* queryLoop(
         void executeStopFailureHooks(lastMessage, toolUseContext)
         await emitQueryTerminated('completed', {
           last_message_api_error: true,
+        }, {
+          finalMessages: [...messagesForQuery, ...assistantMessages],
         })
         return { reason: 'completed' }
       }
@@ -2036,7 +2176,9 @@ async function* queryLoop(
       )
 
       if (stopHookResult.preventContinuation) {
-        await emitQueryTerminated('stop_hook_prevented')
+        await emitQueryTerminated('stop_hook_prevented', undefined, {
+          finalMessages: [...messagesForQuery, ...assistantMessages],
+        })
         return { reason: 'stop_hook_prevented' }
       }
 
@@ -2092,6 +2234,7 @@ async function* queryLoop(
         await emitHarnessEvent({
           event: 'token_budget.decision',
           component: 'query_loop',
+          user_action_id: toolUseContext.userActionId ?? null,
           query_id: queryTracking.chainId,
           turn_id: turnId,
           loop_iter: turnCount,
@@ -2163,7 +2306,9 @@ async function* queryLoop(
         }
       }
 
-      await emitQueryTerminated('completed')
+      await emitQueryTerminated('completed', undefined, {
+        finalMessages: [...messagesForQuery, ...assistantMessages],
+      })
       return { reason: 'completed' }
     }
 
@@ -2189,6 +2334,7 @@ async function* queryLoop(
     await emitHarnessEvent({
       event: 'tool.execution.mode.selected',
       component: 'query_loop',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: queryTracking.chainId,
       turn_id: turnId,
       loop_iter: turnCount,
@@ -2334,13 +2480,17 @@ async function* queryLoop(
           turnCount: nextTurnCountOnAbort,
         })
       }
-      await emitQueryTerminated('aborted_tools')
+      await emitQueryTerminated('aborted_tools', undefined, {
+        finalMessages: [...messagesForQuery, ...assistantMessages, ...toolResults],
+      })
       return { reason: 'aborted_tools' }
     }
 
     // If a hook indicated to prevent continuation, stop here
     if (shouldPreventContinuation) {
-      await emitQueryTerminated('hook_stopped')
+      await emitQueryTerminated('hook_stopped', undefined, {
+        finalMessages: [...messagesForQuery, ...assistantMessages, ...toolResults],
+      })
       return { reason: 'hook_stopped' }
     }
 
@@ -2534,6 +2684,8 @@ async function* queryLoop(
       })
       await emitQueryTerminated('max_turns', {
         turn_count: nextTurnCount,
+      }, {
+        finalMessages: [...messagesForQuery, ...assistantMessages, ...toolResults],
       })
       return { reason: 'max_turns', turnCount: nextTurnCount }
     }

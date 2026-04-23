@@ -373,6 +373,7 @@ export async function* runToolUse(
     await emitHarnessEvent({
       event: 'tool.execution.failed',
       component: 'tool_execution',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       request_id: requestId ?? null,
       tool_call_id: toolUse.id,
@@ -433,6 +434,7 @@ export async function* runToolUse(
     await emitHarnessEvent({
       event: 'tool.enqueued',
       component: 'tool_execution',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       request_id: requestId ?? null,
       tool_call_id: toolUse.id,
@@ -446,6 +448,7 @@ export async function* runToolUse(
     await emitHarnessEvent({
       event: 'tool.execution.started',
       component: 'tool_execution',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       request_id: requestId ?? null,
       tool_call_id: toolUse.id,
@@ -496,6 +499,7 @@ export async function* runToolUse(
       await emitHarnessEvent({
         event: 'tool.execution.failed',
         component: 'tool_execution',
+        user_action_id: toolUseContext.userActionId ?? null,
         query_id: toolUseContext.queryTracking?.chainId ?? null,
         request_id: requestId ?? null,
         tool_call_id: toolUse.id,
@@ -528,6 +532,7 @@ export async function* runToolUse(
     await emitHarnessEvent({
       event: 'tool.execution.completed',
       component: 'tool_execution',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       request_id: requestId ?? null,
       tool_call_id: toolUse.id,
@@ -562,6 +567,7 @@ export async function* runToolUse(
     await emitHarnessEvent({
       event: 'tool.execution.failed',
       component: 'tool_execution',
+      user_action_id: toolUseContext.userActionId ?? null,
       query_id: toolUseContext.queryTracking?.chainId ?? null,
       request_id: requestId ?? null,
       tool_call_id: toolUse.id,

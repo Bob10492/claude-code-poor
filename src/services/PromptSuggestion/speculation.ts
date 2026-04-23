@@ -376,6 +376,13 @@ async function generatePipelinedSuggestion(
       pipelineAbortController,
       promptId,
       createCacheSafeParams(augmentedContext),
+      {
+        kind: 'internal_pipeline',
+        detail: 'pipelined_suggestion_generation',
+        payload: {
+          speculative_message_count: speculatedMessages.length,
+        },
+      },
     )
 
     if (pipelineAbortController.signal.aborted) return
@@ -632,6 +639,15 @@ export async function startSpeculation(
       },
       querySource: 'speculation',
       forkLabel: 'speculation',
+      subagentReason: 'speculation',
+      subagentTriggerKind: 'internal_pipeline',
+      subagentTriggerDetail: isPipelined
+        ? 'accepted_pipelined_prompt_suggestion'
+        : 'accepted_prompt_suggestion',
+      subagentTriggerPayload: {
+        suggestion_length: suggestionText.length,
+        is_pipelined: isPipelined,
+      },
       maxTurns: MAX_SPECULATION_TURNS,
       overrides: { abortController, requireCanUseTool: true },
       onMessage: msg => {

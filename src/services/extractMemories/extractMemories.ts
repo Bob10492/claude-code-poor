@@ -418,6 +418,17 @@ export function initExtractMemories(): void {
         canUseTool,
         querySource: 'extract_memories',
         forkLabel: 'extract_memories',
+        subagentReason: 'extract_memories',
+        subagentTriggerKind: 'stop_hook_background',
+        subagentTriggerDetail: isTrailingRun
+          ? 'coalesced_trailing_run'
+          : 'post_turn_background_extraction',
+        subagentTriggerPayload: {
+          feature_gate_enabled: true,
+          auto_memory_enabled: true,
+          remote_mode: false,
+          trailing_run: Boolean(isTrailingRun),
+        },
         // The extractMemories subagent does not need to record to transcript.
         // Doing so can create race conditions with the main thread.
         skipTranscript: true,

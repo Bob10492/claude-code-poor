@@ -49,6 +49,7 @@ src/observability/harness.ts
 | `parent_turn_id` | 父 turn，当前预留 |
 | `subagent_id` | 子 agent ID |
 | `subagent_type` | 子 agent 类型或 fork label |
+| `subagent_reason` | 子 agent 启动原因，优先由调用点显式传入 |
 | `query_source` | query source |
 | `request_id` | API request id |
 | `tool_call_id` | 工具调用 id |
@@ -248,6 +249,11 @@ domain.action.stage
 - `final_message_count`
 - `transition`
 
+终态约定：
+
+- 对正常 `end_turn -> query.terminated` 的收尾分支，当前实现会在终止前补发一次 `state.snapshot.after_turn`
+- ETL 同时兼容旧日志；即使旧样本缺少这条终态 `after_turn`，也会把“`end_turn + query.terminated`”识别为闭合终态 turn
+
 ---
 
 ## 7. 当前未完全覆盖项
@@ -271,6 +277,7 @@ domain.action.stage
 - 事件写本地文件，旁路现有 analytics
 - 允许未来补更多字段，但尽量不破坏现有命名
 - 快照只做证据存储，主事件保留摘要
+- `user_action_id` 是整次用户动作的根键；阅读完整执行树时，应优先用它串主线程与所有 subagent
 
 ---
 

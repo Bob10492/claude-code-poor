@@ -133,12 +133,35 @@ function countToolCallsSince(
 }
 
 export function shouldExtractMemory(messages: Message[]): boolean {
+  return evaluateSessionMemoryTrigger(messages).shouldExtract
+}
+
+function evaluateSessionMemoryTrigger(messages: Message[]): {
+  shouldExtract: boolean
+  detail:
+    | 'token_threshold_and_tool_threshold'
+    | 'token_threshold_and_natural_break'
+    | null
+  payload: Record<string, unknown>
+} {
   // Check if we've met the initialization threshold
   // Uses total context window tokens (same as autocompact) for consistent behavior
   const currentTokenCount = tokenCountWithEstimation(messages)
+  const initializationThresholdMet = hasMetInitializationThreshold(currentTokenCount)
   if (!isSessionMemoryInitialized()) {
-    if (!hasMetInitializationThreshold(currentTokenCount)) {
-      return false
+    if (!initializationThresholdMet) {
+      return {
+        shouldExtract: false,
+        detail: null,
+        payload: {
+          current_token_count: currentTokenCount,
+          has_met_initialization_threshold: false,
+          has_met_update_threshold: false,
+          tool_calls_since_last_update: 0,
+          tool_call_threshold: getToolCallsBetweenUpdates(),
+          has_tool_calls_in_last_turn: hasToolCallsInLastAssistantTurn(messages),
+        },
+      }
     }
     markSessionMemoryInitialized()
   }
@@ -170,15 +193,47 @@ export function shouldExtractMemory(messages: Message[]): boolean {
     (hasMetTokenThreshold && hasMetToolCallThreshold) ||
     (hasMetTokenThreshold && !hasToolCallsInLastTurn)
 
+  let detail:
+    | 'token_threshold_and_tool_threshold'
+    | 'token_threshold_and_natural_break'
+    | null = null
+  if (hasMetTokenThreshold && hasMetToolCallThreshold) {
+    detail = 'token_threshold_and_tool_threshold'
+  } else if (hasMetTokenThreshold && !hasToolCallsInLastTurn) {
+    detail = 'token_threshold_and_natural_break'
+  }
+
   if (shouldExtract) {
     const lastMessage = messages[messages.length - 1]
     if (lastMessage?.uuid) {
       lastMemoryMessageUuid = lastMessage.uuid
     }
-    return true
+    return {
+      shouldExtract: true,
+      detail,
+      payload: {
+        current_token_count: currentTokenCount,
+        has_met_initialization_threshold: true,
+        has_met_update_threshold: hasMetTokenThreshold,
+        tool_calls_since_last_update: toolCallsSinceLastUpdate,
+        tool_call_threshold: getToolCallsBetweenUpdates(),
+        has_tool_calls_in_last_turn: hasToolCallsInLastTurn,
+      },
+    }
   }
 
-  return false
+  return {
+    shouldExtract: false,
+    detail,
+    payload: {
+      current_token_count: currentTokenCount,
+      has_met_initialization_threshold: true,
+      has_met_update_threshold: hasMetTokenThreshold,
+      tool_calls_since_last_update: toolCallsSinceLastUpdate,
+      tool_call_threshold: getToolCallsBetweenUpdates(),
+      has_tool_calls_in_last_turn: hasToolCallsInLastTurn,
+    },
+  }
 }
 
 async function setupSessionMemoryFile(
@@ -300,7 +355,8 @@ const extractSessionMemory = sequential(async function (
   // Initialize config from remote (lazy, only once)
   initSessionMemoryConfigIfNeeded()
 
-  if (!shouldExtractMemory(messages)) {
+  const triggerInfo = evaluateSessionMemoryTrigger(messages)
+  if (!triggerInfo.shouldExtract) {
     return
   }
 
@@ -328,6 +384,10 @@ const extractSessionMemory = sequential(async function (
     canUseTool: createMemoryFileCanUseTool(memoryPath),
     querySource: 'session_memory',
     forkLabel: 'session_memory',
+    subagentReason: 'session_memory',
+    subagentTriggerKind: 'post_sampling_hook',
+    subagentTriggerDetail: triggerInfo.detail ?? undefined,
+    subagentTriggerPayload: triggerInfo.payload,
     overrides: { readFileState: setupContext.readFileState },
   })
 
@@ -436,6 +496,12 @@ export async function manuallyExtractSessionMemory(
       canUseTool: createMemoryFileCanUseTool(memoryPath),
       querySource: 'session_memory',
       forkLabel: 'session_memory_manual',
+      subagentReason: 'session_memory',
+      subagentTriggerKind: 'manual_command',
+      subagentTriggerDetail: 'manual_session_memory_extraction',
+      subagentTriggerPayload: {
+        message_count: messages.length,
+      },
       overrides: { readFileState: setupContext.readFileState },
     })
 

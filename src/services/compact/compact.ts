@@ -1195,6 +1195,14 @@ async function streamCompactSummary({
           canUseTool: createCompactCanUseTool(),
           querySource: 'compact',
           forkLabel: 'compact',
+          subagentReason: 'compact',
+          subagentTriggerKind: 'compaction_flow',
+          subagentTriggerDetail: 'prompt_cache_sharing_compact',
+          subagentTriggerPayload: {
+            prompt_cache_sharing_enabled: promptCacheSharingEnabled,
+            max_turns: 1,
+            skip_cache_write: true,
+          },
           maxTurns: 1,
           skipCacheWrite: true,
           // Pass the compact context's abortController so user Esc aborts the

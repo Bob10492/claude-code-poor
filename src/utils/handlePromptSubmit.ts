@@ -75,6 +75,7 @@ type BaseExecutionParams = {
     onBeforeQuery?: (input: string, newMessages: Message[]) => Promise<boolean>,
     input?: string,
     effort?: EffortValue,
+    userActionId?: UUID,
   ) => Promise<void>
   setAppState: (updater: (prev: AppState) => AppState) => void
   onBeforeQuery?: (input: string, newMessages: Message[]) => Promise<boolean>
@@ -585,6 +586,7 @@ async function executeUserInput(params: ExecuteUserInputParams): Promise<void> {
             shouldCallBeforeQuery ? onBeforeQuery : undefined,
             primaryInput,
             effort,
+            primaryCmd?.uuid,
           )
         } else {
           // Local slash commands that skip messages (e.g., /model, /theme).

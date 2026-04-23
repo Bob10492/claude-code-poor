@@ -5,6 +5,7 @@ import {
   withMemoryCorrectionHint,
 } from 'src/utils/messages.js'
 import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+import { emitHarnessEvent } from '../../observability/harness.js'
 import { findToolByName, type Tools, type ToolUseContext } from '../../Tool.js'
 import { BASH_TOOL_NAME } from '@claude-code-best/builtin-tools/tools/BashTool/toolName.js'
 import type { AssistantMessage, Message } from '../../types/message.js'
@@ -213,6 +214,31 @@ export class StreamingToolExecutor {
     })
   }
 
+  private async emitSyntheticFailureEvent(
+    tool: TrackedTool,
+    reason: 'sibling_error' | 'user_interrupted' | 'streaming_fallback',
+  ): Promise<void> {
+    await emitHarnessEvent({
+      event: 'tool.execution.failed',
+      component: 'streaming_tool_executor',
+      user_action_id: this.toolUseContext.userActionId ?? null,
+      query_id: this.toolUseContext.queryTracking?.chainId ?? null,
+      request_id:
+        typeof tool.assistantMessage.requestId === 'string'
+          ? tool.assistantMessage.requestId
+          : null,
+      tool_call_id: tool.id,
+      subagent_id: this.toolUseContext.agentId ?? null,
+      subagent_type: this.toolUseContext.agentType ?? null,
+      payload: {
+        tool_name: tool.block.name,
+        success: false,
+        error: reason,
+        duration_ms: 0,
+      },
+    })
+  }
+
   /**
    * Determine why a tool should be cancelled.
    */
@@ -286,6 +312,7 @@ export class StreamingToolExecutor {
       // If already aborted (by error or user), generate synthetic error block instead of running the tool
       const initialAbortReason = this.getAbortReason(tool)
       if (initialAbortReason) {
+        await this.emitSyntheticFailureEvent(tool, initialAbortReason)
         messages.push(
           this.createSyntheticErrorMessage(
             tool.id,
@@ -343,6 +370,7 @@ export class StreamingToolExecutor {
         // Only add the synthetic error if THIS tool didn't produce the error.
         const abortReason = this.getAbortReason(tool)
         if (abortReason && !thisToolErrored) {
+          await this.emitSyntheticFailureEvent(tool, abortReason)
           messages.push(
             this.createSyntheticErrorMessage(
               tool.id,
