@@ -23,6 +23,8 @@ if ([string]::IsNullOrWhiteSpace($UserActionId)) {
   $Latest = $true
 }
 
+$SelectedBy = if ($Latest) { "latest" } else { "explicit_user_action_id" }
+
 function Resolve-ShortId {
   param([string]$Value)
   if ([string]::IsNullOrWhiteSpace($Value)) { return "latest" }
@@ -52,12 +54,15 @@ function Resolve-LatestUserActionId {
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
   if ($Latest) {
     $UserActionId = Resolve-LatestUserActionId
-    $Latest = $false
   }
   $targetId = Resolve-ShortId $UserActionId
   $OutputDir = Join-Path $repoRoot ("ObservrityTask\action-reports\deep\user_action_{0}" -f $targetId)
 } elseif (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
   $OutputDir = Join-Path $repoRoot $OutputDir
+}
+
+if ($Latest -and [string]::IsNullOrWhiteSpace($UserActionId)) {
+  $UserActionId = Resolve-LatestUserActionId
 }
 
 [System.IO.Directory]::CreateDirectory($OutputDir) | Out-Null
@@ -67,12 +72,12 @@ $tsArgs = @(
   "run",
   (Join-Path $repoRoot "scripts\observability\deep_explain_action.ts")
 )
-if ($Latest) {
-  $tsArgs += "--latest"
-} else {
+if (-not [string]::IsNullOrWhiteSpace($UserActionId)) {
   $tsArgs += @("--user-action-id", $UserActionId)
+} elseif ($Latest) {
+  $tsArgs += "--latest"
 }
-$tsArgs += @("--output-dir", $OutputDir, "--baseline-report-path", $baselineReportPath)
+$tsArgs += @("--selected-by", $SelectedBy, "--output-dir", $OutputDir, "--baseline-report-path", $baselineReportPath)
 
 & $bunExe @tsArgs
 if ($LASTEXITCODE -ne 0) {
@@ -84,10 +89,10 @@ $explainArgs = @(
   "-File", (Join-Path $repoRoot "scripts\observability\explain_action.ps1"),
   "-OutputPath", $baselineReportPath
 )
-if ($Latest) {
-  $explainArgs += "-Latest"
-} else {
+if (-not [string]::IsNullOrWhiteSpace($UserActionId)) {
   $explainArgs += @("-UserActionId", $UserActionId)
+} elseif ($Latest) {
+  $explainArgs += "-Latest"
 }
 $explainArgs += "-SnapshotDb"
 

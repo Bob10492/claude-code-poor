@@ -6,6 +6,8 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue }
 
+export type SelectionMode = "latest" | "explicit_user_action_id"
+
 export type ActionRow = {
   user_action_id: string
   event_date: string
@@ -150,6 +152,20 @@ export type ToolInputSemantics = {
   rawInput: JsonValue | null
 }
 
+export type ToolResultCandidate = {
+  tool_use_id: string | null
+  snapshot_ref: string
+  category: string | null
+  matched_by: "tool_use_id" | "turn_fallback"
+  text_summary: string
+  stdout_summary: string
+  stderr_summary: string
+  error_summary: string
+  status: string
+  result_files: string[]
+  warnings: string[]
+}
+
 export type RichToolCall = {
   tool_call_id: string
   query_id: string | null
@@ -162,6 +178,13 @@ export type RichToolCall = {
   success: boolean | null
   input_summary: string
   output_summary: string
+  stdout_summary: string
+  stderr_summary: string
+  error_summary: string
+  result_summary_rich: string
+  detected_problem: string
+  detected_fix_signal: string
+  result_files: string[]
   command_or_path: string
   intent_inferred: string
   produced_files: string[]
@@ -189,6 +212,11 @@ export type PhaseRecord = {
   fixes: string[]
   evidence_refs: string[]
   tool_call_ids: string[]
+  phase_tool_call_ids: string[]
+  primary_artifacts: string[]
+  reason_summary: string
+  action_summary: string
+  result_summary: string
 }
 
 export type ArtifactRecord = {
@@ -196,7 +224,11 @@ export type ArtifactRecord = {
   artifact_type: string
   first_seen_phase: string
   created_by_tool: string
+  created_by_tool_call_id: string | null
+  created_by_phase_id: string | null
   modified_by_tools: string[]
+  modified_by_tool_call_ids: string[]
+  phase_ids: string[]
   evidence_refs: string[]
 }
 
@@ -208,4 +240,23 @@ export type EvidenceRecord = {
   turn_id: string | null
   extracted_fields: string[]
   summary: string
+}
+
+export type RepairChain = {
+  chain_id: string
+  problem_summary: string
+  root_cause_guess: string
+  fix_actions: string[]
+  verification_summary: string
+  tool_call_ids: string[]
+  phase_ids: string[]
+  artifact_paths: string[]
+  evidence_refs: string[]
+  status: "resolved" | "unresolved"
+}
+
+export type TurnSnapshotBundle = {
+  responseSnapshots: SnapshotRecord[]
+  relatedSnapshots: SnapshotRecord[]
+  afterTurnSnapshots: SnapshotRecord[]
 }

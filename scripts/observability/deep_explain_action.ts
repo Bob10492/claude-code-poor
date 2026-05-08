@@ -10,18 +10,22 @@ import type {
   EvidenceRecord,
   IntegrityRow,
   JsonValue,
-  PhaseRecord,
   QueryRow,
+  RepairChain,
   RichToolCall,
+  SelectionMode,
   SnapshotIndexRow,
   SnapshotRecord,
   SubagentRow,
   ToolRow,
   TurnRow,
+  TurnSnapshotBundle,
 } from "./lib/deep_action_types"
 import { buildDebugChainFlow, buildRichStageFlow } from "./lib/mermaid_rich_graph"
 import { inferPhases } from "./lib/phase_infer"
+import { detectRepairChains } from "./lib/repair_chain_detector"
 import { SnapshotReader } from "./lib/snapshot_reader"
+import { enrichToolCallsWithResults } from "./lib/tool_result_extractor"
 import { buildRichToolCalls } from "./lib/tool_use_extractor"
 
 const repoRoot = resolve(import.meta.dir, "..", "..")
@@ -39,12 +43,14 @@ function parseArgs(argv: string[]): {
   latest: boolean
   outputDir?: string
   baselineReportPath?: string
+  selectedBy?: SelectionMode
 } {
   const parsed = { latest: false } as {
     userActionId?: string
     latest: boolean
     outputDir?: string
     baselineReportPath?: string
+    selectedBy?: SelectionMode
   }
   for (let index = 0; index < argv.length; index += 1) {
     const current = argv[index]
@@ -52,8 +58,12 @@ function parseArgs(argv: string[]): {
     if (current === "--latest") parsed.latest = true
     if (current === "--output-dir") parsed.outputDir = argv[++index]
     if (current === "--baseline-report-path") parsed.baselineReportPath = argv[++index]
+    if (current === "--selected-by") parsed.selectedBy = argv[++index] as SelectionMode
   }
   if (!parsed.userActionId) parsed.latest = true
+  if (!parsed.selectedBy) {
+    parsed.selectedBy = parsed.userActionId ? "explicit_user_action_id" : "latest"
+  }
   return parsed
 }
 
@@ -111,10 +121,7 @@ function csvEscape(value: string | number | boolean | null | undefined): string 
 }
 
 function toCsv(headers: string[], rows: Array<Array<string | number | boolean | null | undefined>>): string {
-  return [
-    headers.join(","),
-    ...rows.map(row => row.map(csvEscape).join(",")),
-  ].join("\n")
+  return [headers.join(","), ...rows.map(row => row.map(csvEscape).join(","))].join("\n")
 }
 
 function shortId(value: string | null | undefined): string {
@@ -127,29 +134,66 @@ function pickLatestUserActionId(databasePath: string): string {
     databasePath,
     "select user_action_id from user_actions order by started_at_ms desc limit 1;",
   )
-  if (rows.length === 0) {
-    fail("no user actions found")
-  }
+  if (rows.length === 0) fail("no user actions found")
   return rows[0]!.user_action_id
 }
 
-function collectResponseSnapshotsByTurn(
+function relevantSnapshot(snapshot: SnapshotRecord): boolean {
+  return Boolean(
+    snapshot.category === "response" ||
+      snapshot.category === "state_after_turn" ||
+      snapshot.category === "state_before_turn" ||
+      snapshot.category === "messages_stage",
+  )
+}
+
+function collectTurnSnapshotsByTurn(
   events: EventRow[],
-  snapshotReader: SnapshotReader,
-): Map<string, SnapshotRecord[]> {
-  const result = new Map<string, SnapshotRecord[]>()
+  snapshots: Map<string, SnapshotRecord>,
+): Map<string, TurnSnapshotBundle> {
+  const bundles = new Map<string, TurnSnapshotBundle>()
   for (const event of events) {
-    if (event.event_name !== "api.stream.completed") continue
+    const queryId = event.effective_query_id ?? event.query_id
+    if (!queryId || !event.turn_id) continue
+    const key = `${queryId}|${event.turn_id}`
+    const bundle =
+      bundles.get(key) ?? {
+        responseSnapshots: [],
+        relatedSnapshots: [],
+        afterTurnSnapshots: [],
+      }
+    const refs = (parseJsonValue(event.snapshot_refs_json) as string[] | null) ?? []
+    for (const ref of refs) {
+      const snapshot = snapshots.get(ref)
+      if (!snapshot || !relevantSnapshot(snapshot)) continue
+      if (!bundle.relatedSnapshots.some(item => item.snapshotRef === snapshot.snapshotRef)) {
+        bundle.relatedSnapshots.push(snapshot)
+      }
+      if (snapshot.category === "response" && !bundle.responseSnapshots.some(item => item.snapshotRef === snapshot.snapshotRef)) {
+        bundle.responseSnapshots.push(snapshot)
+      }
+      if (snapshot.category === "state_after_turn" && !bundle.afterTurnSnapshots.some(item => item.snapshotRef === snapshot.snapshotRef)) {
+        bundle.afterTurnSnapshots.push(snapshot)
+      }
+    }
+
     const payload = parseJsonValue(event.payload_json)
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue
-    const snapshotRef = typeof payload.response_snapshot_ref === "string" ? payload.response_snapshot_ref : null
-    if (!snapshotRef) continue
-    const key = `${event.effective_query_id ?? event.query_id ?? "unknown"}|${event.turn_id ?? "unknown"}`
-    const list = result.get(key) ?? []
-    list.push(snapshotReader.read(snapshotRef))
-    result.set(key, list)
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      const responseRef = typeof payload.response_snapshot_ref === "string" ? payload.response_snapshot_ref : null
+      if (responseRef) {
+        const snapshot = snapshots.get(responseRef)
+        if (snapshot && !bundle.responseSnapshots.some(item => item.snapshotRef === snapshot.snapshotRef)) {
+          bundle.responseSnapshots.push(snapshot)
+        }
+        if (snapshot && !bundle.relatedSnapshots.some(item => item.snapshotRef === snapshot.snapshotRef)) {
+          bundle.relatedSnapshots.push(snapshot)
+        }
+      }
+    }
+
+    bundles.set(key, bundle)
   }
-  return result
+  return bundles
 }
 
 function buildEvidenceIndex(params: {
@@ -157,6 +201,7 @@ function buildEvidenceIndex(params: {
   snapshots: Map<string, SnapshotRecord>
 }): EvidenceRecord[] {
   const rows: EvidenceRecord[] = []
+  const seen = new Set<string>()
   let index = 0
 
   for (const event of params.events) {
@@ -164,19 +209,22 @@ function buildEvidenceIndex(params: {
     for (const ref of refs) {
       const snapshot = params.snapshots.get(ref)
       if (!snapshot) continue
+      const key = `${snapshot.snapshotRef}|${event.effective_query_id ?? event.query_id ?? "unknown"}|${event.turn_id ?? "unknown"}`
+      if (seen.has(key)) continue
+      seen.add(key)
       const data = snapshot.data
       const extractedFields =
-        data && typeof data === "object" && !Array.isArray(data)
-          ? Object.keys(data).slice(0, 8)
-          : []
+        data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data).slice(0, 8) : []
       const summary =
         snapshot.category === "response"
-          ? "response snapshot with assistant text/tool_use blocks"
+          ? "response snapshot with assistant tool_use blocks"
           : snapshot.category === "state_after_turn"
-            ? "after-turn state snapshot"
+            ? "after-turn snapshot with state counters / tool aftermath"
             : snapshot.category === "state_before_turn"
-              ? "before-turn state snapshot"
-              : snapshot.category ?? "snapshot"
+              ? "before-turn snapshot"
+              : snapshot.category === "messages_stage"
+                ? "messages-stage snapshot with tool_result history"
+                : snapshot.category ?? "snapshot"
       index += 1
       rows.push({
         evidence_id: `e${String(index).padStart(3, "0")}`,
@@ -191,6 +239,11 @@ function buildEvidenceIndex(params: {
   }
 
   return rows
+}
+
+function terminalReason(queries: QueryRow[]): string {
+  const reasons = [...new Set(queries.map(query => query.terminal_reason).filter(Boolean))]
+  return reasons.join(" | ") || "unknown"
 }
 
 function main(): void {
@@ -241,16 +294,20 @@ function main(): void {
     for (const event of events) {
       const refs = (parseJsonValue(event.snapshot_refs_json) as string[] | null) ?? []
       for (const ref of refs) snapshotRefs.add(ref)
+      const payload = parseJsonValue(event.payload_json)
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        const responseRef = typeof payload.response_snapshot_ref === "string" ? payload.response_snapshot_ref : null
+        if (responseRef) snapshotRefs.add(responseRef)
+      }
     }
+
     const snapshotIndex = new Map<string, SnapshotIndexRow>()
     if (snapshotRefs.size > 0) {
       for (const row of runDuckDbJson<SnapshotIndexRow>(
         tempDbPath,
         "select snapshot_ref, file_name, relative_path, absolute_path, exists, size_bytes, sha256, referenced_count, first_event_ts, last_event_ts, category from snapshots_index;",
       )) {
-        if (snapshotRefs.has(row.snapshot_ref)) {
-          snapshotIndex.set(row.snapshot_ref, row)
-        }
+        if (snapshotRefs.has(row.snapshot_ref)) snapshotIndex.set(row.snapshot_ref, row)
       }
     }
 
@@ -265,31 +322,56 @@ function main(): void {
       turnsByQueryTurn.set(`${turn.query_id}|${turn.turn_id}`, { agent_name: turn.agent_name })
     }
 
-    const responseSnapshotsByTurn = collectResponseSnapshotsByTurn(events, snapshotReader)
+    const turnSnapshotsByKey = collectTurnSnapshotsByTurn(events, snapshots)
+    const responseSnapshotsByTurn = new Map(
+      [...turnSnapshotsByKey.entries()].map(([key, bundle]) => [key, bundle.responseSnapshots]),
+    )
+    const baseRichTools = buildRichToolCalls({
+      tools,
+      events,
+      turnsByQueryTurn,
+      responseSnapshotsByTurn,
+    })
     const richTools = enrichToolPaths(
-      buildRichToolCalls({ tools, events, turnsByQueryTurn, responseSnapshotsByTurn }),
+      enrichToolCallsWithResults({
+        tools: baseRichTools,
+        turnSnapshotsByKey,
+      }),
     )
     const phases = inferPhases({ action, queries, turns, tools: richTools })
-    const phaseByToolId = new Map<string, PhaseRecord>()
+    const phaseByToolId = new Map<string, typeof phases[number]>()
     for (const phase of phases) {
-      for (const toolCallId of phase.tool_call_ids) {
+      for (const toolCallId of phase.phase_tool_call_ids) {
         phaseByToolId.set(toolCallId, phase)
       }
     }
     const artifacts = buildArtifactChain(richTools, phaseByToolId)
     const evidence = buildEvidenceIndex({ events, snapshots })
+    const repairChains = detectRepairChains({ richTools, phases, artifacts })
 
     const outputDir =
       args.outputDir ??
       join(repoRoot, "ObservrityTask", "action-reports", "deep", `user_action_${shortId(userActionId)}`)
     mkdirSync(outputDir, { recursive: true })
 
-    const richMermaid = buildRichStageFlow(phases)
-    const debugMermaid = buildDebugChainFlow(phases)
-    const richMermaidPath = join(outputDir, "rich_stage_flow.mmd")
-    const debugMermaidPath = join(outputDir, "debug_chain_flow.mmd")
-    writeFileSync(richMermaidPath, richMermaid, "utf8")
-    writeFileSync(debugMermaidPath, debugMermaid, "utf8")
+    const richMermaid = buildRichStageFlow({
+      action,
+      queries,
+      subagents,
+      phases,
+      tools: richTools,
+      artifacts,
+      evidence,
+      repairChains,
+    })
+    const debugMermaid = buildDebugChainFlow({
+      repairChains,
+      tools: richTools,
+      artifacts,
+      evidence,
+    })
+    writeFileSync(join(outputDir, "rich_stage_flow.mmd"), richMermaid, "utf8")
+    writeFileSync(join(outputDir, "debug_chain_flow.mmd"), debugMermaid, "utf8")
 
     writeFileSync(
       join(outputDir, "phase_timeline_mapping.csv"),
@@ -297,19 +379,26 @@ function main(): void {
         [
           "phase_id",
           "phase_name",
+          "stage_kind",
           "start_local",
           "end_local",
           "duration_ms",
           "query_ids",
-          "turn_range",
+          "turn_ids",
           "tool_counts",
-          "main_outputs",
+          "reason_summary",
+          "action_summary",
+          "result_summary",
+          "primary_artifacts",
           "problems",
+          "fixes",
+          "phase_tool_call_ids",
           "evidence_refs",
         ],
         phases.map(phase => [
           phase.phase_id,
           phase.phase_name,
+          phase.stage_kind,
           phase.start_local,
           phase.end_local,
           phase.duration_ms,
@@ -318,8 +407,13 @@ function main(): void {
           Object.entries(phase.tool_counts)
             .map(([name, count]) => `${name}:${count}`)
             .join(";"),
-          phase.main_outputs.join(" | "),
+          phase.reason_summary,
+          phase.action_summary,
+          phase.result_summary,
+          phase.primary_artifacts.join(" | "),
           phase.problems.join(" | "),
+          phase.fixes.join(" | "),
+          phase.phase_tool_call_ids.join(";"),
           phase.evidence_refs.join(";"),
         ]),
       ),
@@ -330,6 +424,7 @@ function main(): void {
       join(outputDir, "tool_calls_rich.csv"),
       toCsv(
         [
+          "tool_call_id",
           "query_id",
           "agent_name",
           "turn_id",
@@ -339,14 +434,23 @@ function main(): void {
           "duration_ms",
           "success",
           "input_summary",
-          "output_summary",
           "command_or_path",
+          "output_summary",
+          "stdout_summary",
+          "stderr_summary",
+          "error_summary",
+          "result_summary_rich",
+          "detected_problem",
+          "detected_fix_signal",
           "intent_inferred",
           "produced_files",
           "touched_files",
+          "result_files",
           "snapshot_refs",
+          "warnings",
         ],
         richTools.map(tool => [
+          tool.tool_call_id,
           tool.query_id,
           tool.agent_name,
           tool.turn_id,
@@ -356,12 +460,20 @@ function main(): void {
           tool.duration_ms,
           tool.success,
           tool.input_summary,
-          tool.output_summary,
           tool.command_or_path,
+          tool.output_summary,
+          tool.stdout_summary,
+          tool.stderr_summary,
+          tool.error_summary,
+          tool.result_summary_rich,
+          tool.detected_problem,
+          tool.detected_fix_signal,
           tool.intent_inferred,
           tool.produced_files.join(";"),
           tool.touched_files.join(";"),
+          tool.result_files.join(";"),
           tool.snapshot_refs.join(";"),
+          tool.warnings.join(";"),
         ]),
       ),
       "utf8",
@@ -375,7 +487,11 @@ function main(): void {
           "artifact_type",
           "first_seen_phase",
           "created_by_tool",
+          "created_by_tool_call_id",
+          "created_by_phase_id",
           "modified_by_tools",
+          "modified_by_tool_call_ids",
+          "phase_ids",
           "evidence_refs",
         ],
         artifacts.map((artifact: ArtifactRecord) => [
@@ -383,7 +499,11 @@ function main(): void {
           artifact.artifact_type,
           artifact.first_seen_phase,
           artifact.created_by_tool,
+          artifact.created_by_tool_call_id,
+          artifact.created_by_phase_id,
           artifact.modified_by_tools.join(";"),
+          artifact.modified_by_tool_call_ids.join(";"),
+          artifact.phase_ids.join(";"),
           artifact.evidence_refs.join(";"),
         ]),
       ),
@@ -416,6 +536,9 @@ function main(): void {
       tools: richTools,
       artifacts,
       evidence,
+      repairChains,
+      selectedBy: args.selectedBy ?? "explicit_user_action_id",
+      terminalReason: terminalReason(queries),
       richMermaidPath: "rich_stage_flow.mmd",
       debugMermaidPath: "debug_chain_flow.mmd",
       baselineReportPath: args.baselineReportPath ? "baseline_action_report.md" : null,
@@ -426,7 +549,9 @@ function main(): void {
       JSON.stringify(
         {
           userActionId,
+          selectedBy: args.selectedBy ?? "explicit_user_action_id",
           outputDir,
+          repairChainCount: repairChains.length,
           files: [
             "deep_report.md",
             "rich_stage_flow.mmd",

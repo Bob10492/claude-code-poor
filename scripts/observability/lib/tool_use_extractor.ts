@@ -274,6 +274,13 @@ export function buildRichToolCalls(params: {
       success: tool.success,
       input_summary: extracted?.inputSummary ?? "input unavailable",
       output_summary: output.summary,
+      stdout_summary: "",
+      stderr_summary: "",
+      error_summary: tool.success === false ? output.summary : "",
+      result_summary_rich: output.summary,
+      detected_problem: tool.success === false ? output.summary : "",
+      detected_fix_signal: "",
+      result_files: [],
       command_or_path: extracted?.commandOrPath ?? "",
       intent_inferred: inferIntent(
         toolName,
