@@ -105,6 +105,28 @@ export const useSelectInput = <T>({
     return focusedOption?.type === 'input'
   }, [options, state.focusedValue])
 
+  const focusNext = () => {
+    if (onDownFromLastItem) {
+      const lastOption = options[options.length - 1]
+      if (lastOption && state.focusedValue === lastOption.value) {
+        onDownFromLastItem()
+        return
+      }
+    }
+    state.focusNextOption()
+  }
+
+  const focusPrevious = () => {
+    if (onUpFromFirstItem && state.visibleFromIndex === 0) {
+      const firstOption = options[0]
+      if (firstOption && state.focusedValue === firstOption.value) {
+        onUpFromFirstItem()
+        return
+      }
+    }
+    state.focusPreviousOption()
+  }
+
   // Core navigation via keybindings (up/down/enter/escape)
   // When in input mode, exclude navigation/accept keybindings so that
   // j/k/enter pass through to the TextInput instead of being intercepted.
@@ -112,26 +134,8 @@ export const useSelectInput = <T>({
     const handlers: Record<string, () => void> = {}
 
     if (!isInInput) {
-      handlers['select:next'] = () => {
-        if (onDownFromLastItem) {
-          const lastOption = options[options.length - 1]
-          if (lastOption && state.focusedValue === lastOption.value) {
-            onDownFromLastItem()
-            return
-          }
-        }
-        state.focusNextOption()
-      }
-      handlers['select:previous'] = () => {
-        if (onUpFromFirstItem && state.visibleFromIndex === 0) {
-          const firstOption = options[0]
-          if (firstOption && state.focusedValue === firstOption.value) {
-            onUpFromFirstItem()
-            return
-          }
-        }
-        state.focusPreviousOption()
-      }
+      handlers['select:next'] = focusNext
+      handlers['select:previous'] = focusPrevious
       handlers['select:accept'] = () => {
         if (disableSelection === true) return
         if (state.focusedValue === undefined) return
@@ -156,10 +160,10 @@ export const useSelectInput = <T>({
   }, [
     options,
     state,
-    onDownFromLastItem,
-    onUpFromFirstItem,
     isInInput,
     disableSelection,
+    focusNext,
+    focusPrevious,
   ])
 
   useKeybindings(keybindingHandlers, {
@@ -168,7 +172,10 @@ export const useSelectInput = <T>({
   })
 
   // Remaining keys that stay as useInput: number keys, pageUp/pageDown, tab, space,
-  // and arrow key navigation when in input mode
+  // and arrow key navigation when in input mode. We also keep direct up/down
+  // handling here as a defensive fallback for permission prompts after a
+  // query/tool cycle: if the keybinding context is temporarily stale during
+  // a modal transition, Select still owns arrow navigation and consumes it.
   useInput(
     (input, key, event: InputEvent) => {
       const normalizedInput = normalizeFullWidthDigits(input)
@@ -196,28 +203,12 @@ export const useSelectInput = <T>({
 
         // Arrow keys still navigate the select even while in input mode
         if (key.downArrow || (key.ctrl && input === 'n')) {
-          if (onDownFromLastItem) {
-            const lastOption = options[options.length - 1]
-            if (lastOption && state.focusedValue === lastOption.value) {
-              onDownFromLastItem()
-              event.stopImmediatePropagation()
-              return
-            }
-          }
-          state.focusNextOption()
+          focusNext()
           event.stopImmediatePropagation()
           return
         }
         if (key.upArrow || (key.ctrl && input === 'p')) {
-          if (onUpFromFirstItem && state.visibleFromIndex === 0) {
-            const firstOption = options[0]
-            if (firstOption && state.focusedValue === firstOption.value) {
-              onUpFromFirstItem()
-              event.stopImmediatePropagation()
-              return
-            }
-          }
-          state.focusPreviousOption()
+          focusPrevious()
           event.stopImmediatePropagation()
           return
         }
@@ -226,6 +217,17 @@ export const useSelectInput = <T>({
         // Digits should type literally into the input rather than select
         // options — the user has focused a text field and expects typing
         // to insert characters, not jump to a different option.
+        return
+      }
+
+      if (key.downArrow || (key.ctrl && input === 'n')) {
+        focusNext()
+        event.stopImmediatePropagation()
+        return
+      }
+      if (key.upArrow || (key.ctrl && input === 'p')) {
+        focusPrevious()
+        event.stopImmediatePropagation()
         return
       }
 
