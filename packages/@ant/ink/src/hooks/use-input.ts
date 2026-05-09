@@ -55,7 +55,15 @@ const useInput = (inputHandler: Handler, options: Options = {}) => {
     setRawMode(true)
 
     return () => {
-      setRawMode(false)
+      // Defer raw-mode release until after the current React commit settles.
+      // During query -> permission prompt/select transitions, React can run
+      // layout-effect cleanup for an old input owner while the replacement
+      // input owner is still mounting. Synchronously disabling raw mode in
+      // that window can leave stdin in cooked mode: Enter still reaches the
+      // prompt, but arrow-key escape sequences no longer parse as up/down.
+      setTimeout(() => {
+        setRawMode(false)
+      }, 0)
     }
   }, [options.isActive, setRawMode])
 
