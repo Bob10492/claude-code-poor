@@ -1,376 +1,1024 @@
-# Claude Code Best V5 (CCB)
+# CC 可观测系统
 
-[![GitHub Stars](https://img.shields.io/github/stars/claude-code-best/claude-code?style=flat-square&logo=github&color=yellow)](https://github.com/claude-code-best/claude-code/stargazers)
-[![GitHub Contributors](https://img.shields.io/github/contributors/claude-code-best/claude-code?style=flat-square&color=green)](https://github.com/claude-code-best/claude-code/graphs/contributors)
-[![GitHub Issues](https://img.shields.io/github/issues/claude-code-best/claude-code?style=flat-square&color=orange)](https://github.com/claude-code-best/claude-code/issues)
-[![GitHub License](https://img.shields.io/github/license/claude-code-best/claude-code?style=flat-square)](https://github.com/claude-code-best/claude-code/blob/main/LICENSE)
-[![Last Commit](https://img.shields.io/github/last-commit/claude-code-best/claude-code?style=flat-square&color=blue)](https://github.com/claude-code-best/claude-code/commits/main)
-[![Bun](https://img.shields.io/badge/runtime-Bun-black?style=flat-square&logo=bun)](https://bun.sh/)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord)](https://discord.gg/qZU6zS7Q)
+<p align="center">
+  <strong>把 Claude Code 的一次动作，变成可回放、可解释、可评测、可改进的事实链。</strong>
+</p>
 
-> Which Claude do you like? The open source one is the best.
+<p align="center">
+  <a href="https://github.com/claude-code-best/claude-code"><img alt="Upstream: CCB" src="https://img.shields.io/badge/upstream-claude--code--best%2Fclaude--code-6f42c1?style=for-the-badge&logo=github"></a>
+  <img alt="Runtime: Bun" src="https://img.shields.io/badge/runtime-Bun-black?style=for-the-badge&logo=bun">
+  <img alt="Storage: Local First" src="https://img.shields.io/badge/storage-local--first-0ea5e9?style=for-the-badge">
+  <img alt="Evidence: DuckDB" src="https://img.shields.io/badge/evidence-DuckDB-fff000?style=for-the-badge">
+  <img alt="Workflow: V1 to V2.5" src="https://img.shields.io/badge/workflow-V1%20%E2%86%92%20V2.5-22c55e?style=for-the-badge">
+</p>
 
-牢 A (Anthropic) 官方 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI 工具的源码反编译/逆向还原项目。目标是将 Claude Code 大部分功能及工程化能力复现 (问就是老佛爷已经付过钱了)。虽然很难绷, 但是它叫做 CCB(踩踩背)... 而且, 我们实现了企业版或者需要登陆 Claude 账号才能使用的特性, 实现技术普惠
+> 本项目来自原始 CCB 项目：[claude-code-best/claude-code](https://github.com/claude-code-best/claude-code)。
+>
+> 当前 README 聚焦本仓库在 **本地可观测、单 action 深度解释、实验评测、反馈闭环** 方向上的整体演进，不再复述原 CCB 的完整功能清单。
 
-[文档在这里, 支持投稿 PR](https://ccb.agent-aura.top/) | [留影文档在这里](./Friends.md) | [Discord 群组](https://discord.gg/qZU6zS7Q)
+---
 
-| 特性 | 说明 | 文档 |
-|------|------|------|
-| **Claude 群控技术** | Pipe IPC 多实例协作：同机 main/sub 自动编排 + LAN 跨机器零配置发现与通讯，`/pipes` 选择面板 + `Shift+↓` 交互 + 消息广播路由 | [Pipe IPC](https://ccb.agent-aura.top/docs/features/pipes-and-lan) / [LAN](https://ccb.agent-aura.top/docs/features/lan-pipes) |
-| **ACP 协议一等一支持** | 支持接入 Zed、Cursor 等 IDE，支持会话恢复、Skills、权限桥接 | [文档](https://ccb.agent-aura.top/docs/features/acp-zed) |
-| **Remote Control 私有部署** | Docker 自托管远程界面, 可以手机上看 CC | [文档](https://ccb.agent-aura.top/docs/features/remote-control-self-hosting) |
-| **Langfuse 监控** | 企业级 Agent 监控, 可以清晰看到每次 agent loop 细节, 可以一键转化为数据集 | [文档](https://ccb.agent-aura.top/docs/features/langfuse-monitoring) |
-| **Web Search** | 内置网页搜索工具, 支持 bing 和 brave 搜索 | [文档](https://ccb.agent-aura.top/docs/features/web-browser-tool) |
-| **Poor Mode** | 穷鬼模式，关闭记忆提取和键入建议,大幅度减少并发请求 | /poor 可以开关 |
-| **自定义模型供应商** | OpenAI/Anthropic/Gemini/Grok 兼容 | [文档](https://ccb.agent-aura.top/docs/features/custom-platform-login) |
-| Voice Mode | Push-to-Talk 语音输入 | [文档](https://ccb.agent-aura.top/docs/features/voice-mode) |
-| Computer Use | 屏幕截图、键鼠控制 | [文档](https://ccb.agent-aura.top/docs/features/computer-use) |
-| Chrome Use | 浏览器自动化、表单填写、数据抓取 | [自托管](https://ccb.agent-aura.top/docs/features/chrome-use-mcp) [原生版](https://ccb.agent-aura.top/docs/features/claude-in-chrome-mcp) |
-| Sentry | 企业级错误追踪 | [文档](https://ccb.agent-aura.top/docs/internals/sentry-setup) |
-| GrowthBook | 企业级特性开关 | [文档](https://ccb.agent-aura.top/docs/internals/growthbook-adapter) |
-| /dream 记忆整理 | 自动整理和优化记忆文件 | [文档](https://ccb.agent-aura.top/docs/features/auto-dream) |
+## 一句话介绍
 
-- 🚀 [想要启动项目](#快速开始源码版)
-- 🐛 [想要调试项目](#vs-code-调试)
-- 📖 [想要学习项目](#teach-me-学习项目)
+**CC 可观测系统** 是一套围绕 Claude Code / CCB 改造出来的本地优先 Agent 调试与评测系统。
 
+它的目标不是只记录日志，也不是只展示 dashboard，而是把一次真实用户动作变成一条可追溯的工程事实链：
 
-## ⚡ 快速开始(安装版)
-
-不用克隆仓库, 从 NPM 下载后, 直接使用
-
-```sh
-bun  i -g claude-code-best
-bun pm -g trust claude-code-best
-ccb # 以 nodejs 打开 claude code
-ccb-bun # 以 bun 形态打开
-CLAUDE_BRIDGE_BASE_URL=https://remote-control.claude-code-best.win/ CLAUDE_BRIDGE_OAUTH_TOKEN=test-my-key ccb --remote-control # 我们有自部署的远程控制
+```text
+user input
+-> query loop
+-> tool call
+-> subagent
+-> snapshot evidence
+-> user_action_id deep explain
+-> run / score / compare
+-> batch robustness
+-> long-context evaluation
+-> feedback proposal
 ```
 
-## ⚡ 快速开始(源码版)
+这套系统最终回答四类问题：
 
-### ⚙️ 环境要求
+1. **发生了什么？** 一次 `user_action_id` 下到底展开出哪些 query、turn、tool、subagent 和 snapshot？
+2. **为什么这样发生？** 某个 subagent 为什么被拉起？某个 turn 为什么继续？某个工具调用为什么出现？
+3. **代价是多少？** token、缓存、延迟、工具调用、子链路放大分别消耗在哪里？
+4. **下一步该怎么改？** baseline 和 candidate 的差异是否真实、稳定、可解释？评测结果能否生成可审批的下一步 proposal？
 
-一定要最新版本的 bun 啊, 不然一堆奇奇怪怪的 BUG!!! bun upgrade!!!
+---
 
-- 📦 [Bun](https://bun.sh/) >= 1.3.11
-- ⚙️ 常规的配置 CC 的方式, 各大提供商都有自己的配置方式
+## 系统全景图
 
-### 📥 安装
+```mermaid
+flowchart TB
+  U[User Action<br/>一次真实用户动作] --> R[CCB / Claude Code Runtime]
+
+  R --> E[V1 Event Layer<br/>events-YYYYMMDD.jsonl]
+  R --> S[V1 Snapshot Layer<br/>request / response / state snapshots]
+
+  E --> D[DuckDB ETL<br/>build_duckdb_etl.ts]
+  S --> D
+
+  D --> F[V1 Facts<br/>user_action / query / turn / tool / subagent / usage]
+
+  F --> X[V1.1 Deep Explain<br/>围绕单个 user_action_id 深度解析]
+  X --> XR[Action Report<br/>timeline / cause / output / latency / Mermaid]
+
+  F --> B[V2 Evidence Binding<br/>user_action_id / benchmark_run_id]
+  B --> Run[V2 Run]
+  Run --> Score[V2 Score]
+  Score --> Cmp[V2 Compare<br/>baseline vs candidate]
+  Cmp --> Exp[V2 Experiment Summary]
+
+  Exp --> V23[V2.3 Batch Robustness<br/>repeat / run_group / flaky]
+  Exp --> V24[V2.4 Long Context<br/>constraint / fact / distractor / compaction]
+  Exp --> V25[V2.5 Feedback Loop<br/>finding / hypothesis / proposal / approval card]
+
+  V25 --> H[Human Approval<br/>人工拍板]
+```
+
+---
+
+## 版本路线
+
+| 阶段 | 一句话定位 | 解决的核心问题 | 主要产物 |
+|---|---|---|---|
+| **V1** | 本地事实观测系统 | 能不能把一次运行完整记录下来？ | JSONL events、snapshots、DuckDB、事实表、指标视图 |
+| **V1.1 Deep Explain** | 单个 `user_action_id` 深度解析层 | 能不能把某一次 action 的全过程、原因、输出、延迟讲清楚？ | action 深度报告、时序表、分叉原因、复杂 Mermaid、阅读 SOP |
+| **V2.1** | `bind_existing` 评测入口 | 能不能把已有 user_action_id 绑定成正式 run？ | run / score / compare / report |
+| **V2.2-alpha** | `execute_harness` 自动执行 | 能不能自动跑 scenario 并捕获 action？ | benchmark_run_id、自动 capture |
+| **V2.2-beta / V2.2.5** | 真实实验闭环 | candidate 是否真的带来 runtime difference？ | real experiment summary、manual fallback |
+| **V2.3** | Batch + Robustness | 多任务、多候选、多次重复是否稳定？ | run_group、stability summary、flaky status、batch report |
+| **V2.4** | Long Context 专项 | 长上下文下是否保持约束、事实和治理效果？ | context.* score、long_context_summary、manual review notes |
+| **V2.5** | Feedback Loop Beta | 实验结果如何变成下一步建议？ | finding、hypothesis、proposal queue、approval card |
+
+> **V1.1 Deep Explain 的位置**：它属于 `ObservrityTask/10-系统版本/v1` 体系中的深度解析内容，不是和 V1 平行的另一个底层采集系统。V1 负责“把事实采下来”，V1.1 负责“围绕一个具体 `user_action_id` 把事实讲清楚”。
+
+---
+
+## 为什么要做这套系统？
+
+传统调试方式通常只能看到最终回答，真正困难的 Agent 过程隐藏在中间：
+
+```mermaid
+flowchart LR
+  A[最终回答] -.背后隐藏.-> B[Prompt 构建]
+  B -.背后隐藏.-> C[多轮采样]
+  C -.背后隐藏.-> D[工具调用]
+  D -.背后隐藏.-> E[子 Agent]
+  E -.背后隐藏.-> F[记忆读写]
+  F -.背后隐藏.-> G[上下文压缩]
+  G -.背后隐藏.-> H[真实成本]
+```
+
+这套系统把隐藏过程变成证据：
+
+- 一个 `user_action_id` 下有哪些主链和子链？
+- 哪个 subagent 被启动，启动原因是什么？
+- tool call 是否完整闭合？
+- prompt input 里 raw、cache read、cache create 各占多少？
+- 成本是主线程造成的，还是记忆链路放大的？
+- 一次 action 的关键步骤、输出、耗时、分叉点是什么？
+- candidate 看起来更好，是偶然，还是 repeat 后仍然稳定？
+- 长上下文任务里有没有丢硬约束、关键事实或被干扰项带偏？
+- 评测结果能不能沉淀成下一轮改动建议？
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- **Bun**：建议使用最新版本
+- **Windows + PowerShell**：当前观测脚本主要按 Windows PowerShell 工作流编写
+- **DuckDB**：无需额外安装，仓库内已包含本地可执行文件路径设计
+
+安装依赖：
 
 ```bash
 bun install
 ```
 
-### ▶️ 运行
+启动开发模式：
 
 ```bash
-# 开发模式, 看到版本号 888 说明就是对了
 bun run dev
+```
 
-# 构建
+构建：
+
+```bash
 bun run build
 ```
 
-构建采用 code splitting 多文件打包（`build.ts`），产物输出到 `dist/` 目录（入口 `dist/cli.js` + 约 450 个 chunk 文件）。
-
-构建出的版本 bun 和 node 都可以启动, 你 publish 到私有源可以直接启动
-
-如果遇到 bug 请直接提一个 issues, 我们优先解决
-
-### 👤 新人配置 /login
-
-首次运行后，在 REPL 中输入 `/login` 命令进入登录配置界面，选择 **Anthropic Compatible** 即可对接第三方 API 兼容服务（无需 Anthropic 官方账号）。
-选择 OpenAI 和 Gemini 对应的栏目都是支持相应协议的
-
-需要填写的字段：
-
-| 📌 字段 | 📝 说明 | 💡 示例 |
-|------|------|------|
-| Base URL | API 服务地址 | `https://api.example.com/v1` |
-| API Key | 认证密钥 | `sk-xxx` |
-| Haiku Model | 快速模型 ID | `claude-haiku-4-5-20251001` |
-| Sonnet Model | 均衡模型 ID | `claude-sonnet-4-6` |
-| Opus Model | 高性能模型 ID | `claude-opus-4-6` |
-
-- ⌨️ **Tab / Shift+Tab** 切换字段，**Enter** 确认并跳到下一个，最后一个字段按 Enter 保存
-
-
-> ℹ️ 支持所有 Anthropic API 兼容服务（如 OpenRouter、AWS Bedrock 代理等），只要接口兼容 Messages API 即可。
-
-## Feature Flags
-
-所有功能开关通过 `FEATURE_<FLAG_NAME>=1` 环境变量启用，例如：
+类型检查：
 
 ```bash
-FEATURE_BUDDY=1 FEATURE_FORK_SUBAGENT=1 bun run dev
+bun run typecheck
 ```
 
-各 Feature 的详细说明见 [`docs/features/`](docs/features/) 目录，欢迎投稿补充。
+---
 
-## VS Code 调试
+## V1：本地可观测事实层
 
-TUI (REPL) 模式需要真实终端，无法直接通过 VS Code launch 启动调试。使用 **attach 模式**：
+V1 是整个系统的事实地基。它把运行时事件和大对象快照写入本地：
 
-### 步骤
-
-1. **终端启动 inspect 服务**：
-   ```bash
-   bun run dev:inspect
-   ```
-   会输出类似 `ws://localhost:8888/xxxxxxxx` 的地址。
-
-2. **VS Code 附着调试器**：
-   - 在 `src/` 文件中打断点
-   - F5 → 选择 **"Attach to Bun (TUI debug)"**
-
-
-## Teach Me 学习项目
-
-我们新加了一个 teach-me skills, 通过问答式引导帮你理解这个项目的任何模块。(调整 [sigma skill 而来](https://github.com/sanyuan0704/sanyuan-skills))
-
-```bash
-# 在 REPL 中直接输入
-/teach-me Claude Code 架构
-/teach-me React Ink 终端渲染 --level beginner
-/teach-me Tool 系统 --resume
+```text
+.observability/
+├─ events-YYYYMMDD.jsonl
+├─ snapshots/
+│  ├─ request-*.json
+│  ├─ response-*.json
+│  └─ state-*.json
+└─ observability_v1.duckdb
 ```
 
-### 它能做什么
-
-- **诊断水平** — 自动评估你对相关概念的掌握程度，跳过已知的、聚焦薄弱的
-- **构建学习路径** — 将主题拆解为 5-15 个原子概念，按依赖排序逐步推进
-- **苏格拉底式提问** — 用选项引导思考，而非直接给答案
-- **错误概念追踪** — 发现并纠正深层误解
-- **断点续学** — `--resume` 从上次进度继续
-
-### 学习记录
-
-学习进度保存在 `.claude/skills/teach-me/` 目录下，支持跨主题学习者档案。
-
-## 相关文档及网站
-
-- **在线文档（Mintlify）**: [ccb.agent-aura.top](https://ccb.agent-aura.top/) — 文档源码位于 [`docs/`](docs/) 目录，欢迎投稿 PR
-- **DeepWiki**: <https://deepwiki.com/claude-code-best/claude-code>
-
-## 本地可观测系统 V1（推荐运行方案）
-
-当前仓库已经内置了一套本地优先的可观测系统 V1，目标不是“只看昨天的日报”，而是支持你在本机 `debug` 一次真实 query 后，立刻回看：
-
-- 一次 `user_action` 展开成了哪些 `query / turn / tool / subagent`
-- 主线程和子链路分别花了多少 token
-- 当前链路完整性是否闭合
-- 某个 subagent 为什么会在这一刻被拉起
-- 如何把一次动作自动生成为 Mermaid flowchart
-
-完整研究文档和版本化说明见：
-
-- [ObservrityTask 总入口](./ObservrityTask/README.md)
-- [V1 总览](./ObservrityTask/10-%E7%B3%BB%E7%BB%9F%E7%89%88%E6%9C%AC/v1/01-%E6%80%BB%E8%A7%88/%E5%BD%93%E5%89%8D%E5%8F%AF%E8%A7%82%E6%B5%8B%E7%B3%BB%E7%BB%9FV1%E6%B7%B1%E5%BA%A6%E7%A0%94%E7%A9%B6%E6%8A%A5%E5%91%8A.md)
-- [QueryLoop 全流程详解](./ObservrityTask/10-%E7%B3%BB%E7%BB%9F%E7%89%88%E6%9C%AC/v1/04-%E4%B8%93%E9%A2%98%E7%A0%94%E7%A9%B6/QueryLoop%E5%85%A8%E6%B5%81%E7%A8%8B%E8%AF%A6%E8%A7%A3%EF%BC%88%E6%BA%90%E7%A0%81%E7%89%88%EF%BC%89.md)
-- [Subagent 触发因果任务书](./ObservrityTask/10-%E7%B3%BB%E7%BB%9F%E7%89%88%E6%9C%AC/v1/04-%E4%B8%93%E9%A2%98%E7%A0%94%E7%A9%B6/Subagent%E8%A7%A6%E5%8F%91%E5%9B%A0%E6%9E%9C%E5%8F%AF%E8%A7%82%E6%B5%8B%E4%BB%BB%E5%8A%A1%E4%B9%A6.md)
-
-### V1 当前能力
-
-| 能力层 | 当前能力 |
-|------|------|
-| 事件层 | 主线程、turn、tool、subagent、recovery、snapshot 全链路落盘到 `.observability/events-YYYYMMDD.jsonl` |
-| ID 层 | `user_action_id / query_id / turn_id / tool_call_id / subagent_id` 已可稳定串联 |
-| 成本层 | 区分 `Raw Input / Cache Read / Cache Create / Total Prompt Input / Output / Total Billed` |
-| 完整性层 | `query / turn / tool / subagent` 闭合率可统计，当前最新样本主链已闭合 |
-| Agent 层 | 可按 `main_thread / session_memory / extract_memories / ...` 拆分成本与流程 |
-| 因果层 | `subagent_reason + subagent_trigger_kind + subagent_trigger_detail` 已接入 |
-| 阅读层 | 支持 `daily_summary`、`dashboard`、`read_timeline`、`explain_action` |
-| 可视化层 | 支持自动生成 Mermaid DAG，直接复制到 Mermaid Live Editor 查看 |
-
-### 推荐运行方案
-
-以前更像“先跑程序，再回头看零散日志”。  
-现在推荐直接按下面这套观测驱动流程运行：
-
-#### 观测系统 V1 环境要求
-
-- 操作系统：当前脚本默认按 **Windows + PowerShell** 编写
-- 运行时：需要 **Bun**，用于执行 `scripts/observability/build_duckdb_etl.ts`
-- DuckDB：**不需要单独安装**
-  - 仓库已经自带 [tools/duckdb/duckdb.exe](./tools/duckdb/duckdb.exe)
-  - 数据库文件默认落在 `E:\claude-code\.observability\observability_v1.duckdb`
-- 目录要求：
-  - 需要有 `.observability/events-YYYYMMDD.jsonl`
-  - 这些事件文件会在你实际运行 debug 版本并产生真实动作后自动生成
-
-如果用户只是把仓库拉下来，想运行 V1 观测系统，最少需要先完成：
-
-```bash
-bun install
-```
-
-然后至少真实运行过一次程序，产生日志后，再执行观测脚本。
-
-#### 是否需要自己安装 DuckDB？
-
-不需要。
-
-这套 V1 观测系统的设计就是“仓库内自带 DuckDB 可执行文件 + 本地 PowerShell 脚本 + 本地 `.observability` 数据目录”。  
-所以用户不需要额外装 Python 版 DuckDB，也不需要自己配置 DuckDB PATH。
-
-#### 一次最小可运行流程
-
-如果用户是第一次拉代码，推荐按这个顺序：
-
-1. 安装依赖
-
-```bash
-bun install
-```
-
-2. 启动 debug 版本
-
-```bash
-bun run dev
-```
-
-3. 在 REPL 里真实发送至少一条 query  
-   这一步的目的，是生成 `.observability/events-YYYYMMDD.jsonl`
-
-4. 重建观测数据库
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\rebuild_observability_db.ps1
-```
-
-5. 生成最近一次动作的分析报告
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\explain_action.ps1 -Latest
-```
-
-6. 如需总览，再运行：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\daily_summary.ps1
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\build_dashboard.ps1
-```
-
-1. 启动 debug 版本
-
-```bash
-bun run dev
-```
-
-2. 在 REPL 里真实发送一条 query
-
-3. 重建本地观测库
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\rebuild_observability_db.ps1
-```
-
-4. 直接生成最近一次动作的自动报告
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\explain_action.ps1 -Latest
-```
-
-5. 如果要看日级总览或 dashboard
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\daily_summary.ps1
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\build_dashboard.ps1
-```
-
-这套流程的目标是：**每做一次改动，就能用一条真实 `user_action` 做回放和验收。**
-
-### 如何从一个 `user_action_id` 得到完整 flowchart
-
-先查最近几个动作：
-
-```powershell
-E:\claude-code\tools\duckdb\duckdb.exe -json E:\claude-code\.observability\observability_v1.duckdb "select user_action_id, started_at, duration_ms, query_count, subagent_count, total_prompt_input_tokens, total_billed_tokens from user_actions order by started_at_ms desc limit 10;"
-```
-
-拿到目标 `user_action_id` 后，直接生成 Markdown + Mermaid：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\claude-code\scripts\observability\explain_action.ps1 -UserActionId 12330098-180b-4063-9f96-af47b7e7c39f
-```
-
-输出结果会在 `ObservrityTask/` 下生成一份报告，里面自带：
-
-- Basics
-- Query List
-- Branch Points
-- Mermaid DAG
-- Reading SOP
-
-Mermaid 结构大致会长成这样：
+### V1 核心对象
 
 ```mermaid
 flowchart TD
-  UA[user_action]
-  Q0[main_thread query]
-  T1[turn-1]
-  S1[spawn session_memory]
-  Q1[session_memory query]
-  S2[spawn extract_memories]
-  Q2[extract_memories query]
-  UA --> Q0 --> T1
-  T1 --> S1 --> Q1
-  Q0 --> S2 --> Q2
+  UA[user_action_id<br/>一次用户动作] --> Q0[query_id<br/>main thread]
+  UA --> Q1[query_id<br/>subagent query]
+
+  Q0 --> T0[turn-1]
+  Q0 --> T1[turn-2]
+  T0 --> Tool0[tool_call_id<br/>tool lifecycle]
+  T1 --> Tool1[tool_call_id<br/>tool lifecycle]
+
+  Q0 --> Sub[subagent_id<br/>session_memory / extract_memories]
+  Sub --> Q1
+
+  T0 --> Snap0[snapshot_ref]
+  Tool0 --> Snap1[snapshot_ref]
+  Q1 --> Snap2[snapshot_ref]
 ```
 
-在最新 V1 里，分叉点不再只是“这里开了个 subagent”，而是会直接写出触发原因，例如：
+### V1 能看什么？
 
-- `post_sampling_hook / token_threshold_and_tool_threshold`
-- `post_sampling_hook / token_threshold_and_natural_break`
-- `stop_hook_background / post_turn_background_extraction`
+| 层级 | 可观测内容 | 典型问题 |
+|---|---|---|
+| Action | `user_action_id`、开始结束、总成本、总耗时 | 一次用户动作整体发生了什么？ |
+| Query | 主线程 / 子线程 query、source、状态 | 这次动作分裂成了几条链？ |
+| Turn | loop 次数、before/after snapshot、终态 | agent 绕了几轮？ |
+| Tool | detected / enqueued / started / completed | 工具是否悬空或失败？ |
+| Subagent | spawned / completed、reason、trigger kind | 为什么开了这个子 agent？ |
+| Usage | raw input、cache read、cache create、output | token 真正花在哪里？ |
+| Snapshot | request / response / state sidecar | 证据文件是否完整？ |
 
-### 典型阅读路径
+### V1 观测流程
 
-如果你的目标是“看懂刚刚这次用户动作到底发生了什么”，推荐顺序：
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant R as Runtime
+  participant E as JSONL Events
+  participant S as Snapshots
+  participant D as DuckDB
 
-1. `user_actions`：先找到目标 `user_action_id`
-2. `queries`：看这次动作展开成几条主/子链路
-3. `subagents`：看每条子链路为什么被拉起
-4. `turns`：看每条 query 跑了几轮
-5. `tools`：看每轮具体调用了什么工具
-6. `events_raw + snapshots`：看细节和证据
-7. `explain_action.ps1`：把以上内容收敛成一份可读报告
+  U->>R: 在 REPL 中提交 query
+  R->>E: 写入事件
+  R->>S: 写入 request / response / state 快照
+  U->>D: rebuild_observability_db.ps1
+  D->>D: 生成 user_actions / queries / turns / tools / subagents / usage_facts
+```
 
-### 一次真实样本会看到什么
+---
 
-以一次最新样本为例，报告里已经可以直接看到：
+## V1.1 Deep Explain：单个 user_action_id 的深度解析
 
-- `session_memory`
-  - `trigger_kind = post_sampling_hook`
-  - `trigger_detail = token_threshold_and_tool_threshold`
-- `extract_memories`
-  - `trigger_kind = stop_hook_background`
-  - `trigger_detail = post_turn_background_extraction`
-- 第二次 `session_memory`
-  - `trigger_kind = post_sampling_hook`
-  - `trigger_detail = token_threshold_and_natural_break`
+V1.1 Deep Explain 是本 README 的重点能力之一。它对应你本地：
 
-这意味着 V1 现在已经不只是“记录发生了什么”，而是开始具备回答：
+```text
+E:\claude-code\ObservrityTask\10-系统版本\v1
+```
 
-**“为什么在这一刻分叉出这个子 agent”**
+中“围绕一个 `user_action_id` 做深度解析”的内容。
 
-## Contributors
+它不是再加一层底层埋点，而是把 V1 采集到的事实，围绕一个具体 action id 组织成**可读、可讲、可复盘、可画图**的项目级解释能力。
 
-<a href="https://github.com/claude-code-best/claude-code/graphs/contributors">
-  <img src="contributors.svg" alt="Contributors" />
-</a>
+### V1 与 V1.1 的关系
 
-## Star History
+```mermaid
+flowchart LR
+  V1[V1<br/>采集事实] --> DB[DuckDB facts]
+  DB --> V11[V1.1 Deep Explain<br/>解释单个 user_action_id]
+  V11 --> Report[深度报告]
+  V11 --> Timeline[时序时间表]
+  V11 --> Mermaid[复杂 Mermaid 流程图]
+  V11 --> SOP[阅读 SOP]
+```
 
-<a href="https://www.star-history.com/?repos=claude-code-best%2Fclaude-code&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=claude-code-best/claude-code&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=claude-code-best/claude-code&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=claude-code-best/claude-code&type=date&legend=top-left" />
- </picture>
-</a>
+| 层级 | 关注点 | 输出 |
+|---|---|---|
+| **V1** | 事件、快照、DuckDB、事实表、指标口径 | 可查询、可重建、可审计的本地事实源 |
+| **V1.1 Deep Explain** | 单个 action 的过程还原、原因解释、输出摘要、延迟标注、复杂流程图 | 一份能讲清楚“这次为什么这样跑”的深度报告 |
 
-## 许可证
+### V1.1 要回答的问题
 
-本项目仅供学习研究用途。Claude Code 的所有权利归 [Anthropic](https://www.anthropic.com/) 所有。
+- 这个 `user_action_id` 从哪条主线程 query 开始？
+- 它展开出了哪些子 query？
+- 哪些 subagent 被启动，启动原因是什么？
+- 每个 turn 发生了什么，为什么进入下一轮？
+- 每个 tool call 的输入、输出、耗时、状态是什么？
+- 哪些 snapshot 是关键证据？
+- 每一步大概输出了什么？
+- 每一步大概耗时多久？
+- 整条链路里哪里是主路径，哪里是后台路径？
+- Mermaid 图应该如何画，才能让人一眼看懂复杂分叉？
+
+### V1.1 Deep Explain 流程
+
+```mermaid
+flowchart TD
+  A[输入 user_action_id] --> B[定位 user_actions]
+  B --> C[展开 queries]
+  C --> D[展开 turns]
+  D --> E[展开 tool calls]
+  C --> F[展开 subagents]
+  E --> G[关联 snapshots]
+  F --> G
+  G --> H[还原时序时间表]
+  H --> I[标注步骤原因 / 输出 / 延迟]
+  I --> J[生成复杂 Mermaid 流程图]
+  J --> K[形成可读深度报告]
+```
+
+### 如何生成 V1.1 深度报告
+
+先重建本地观测库：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\rebuild_observability_db.ps1
+```
+
+查看最近 action：
+
+```powershell
+.\tools\duckdb\duckdb.exe -json .\.observability\observability_v1.duckdb "select user_action_id, started_at, duration_ms, query_count, subagent_count, total_prompt_input_tokens, total_billed_tokens from user_actions order by started_at_ms desc limit 10;"
+```
+
+解析指定 action：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\explain_action.ps1 -UserActionId <user_action_id>
+```
+
+解析最近一次 action：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\explain_action.ps1 -Latest
+```
+
+查看时间线：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\read_timeline.ps1 -UserActionId <user_action_id>
+```
+
+### V1.1 报告结构
+
+```text
+Action Basics
+├─ user_action_id
+├─ started_at / duration
+├─ query_count / turn_count / tool_count / subagent_count
+└─ token usage summary
+
+Execution Timeline
+├─ main thread started
+├─ prompt built
+├─ assistant sampled
+├─ tool detected / executed
+├─ subagent spawned
+├─ subagent completed
+└─ query terminated
+
+Causal Branch Points
+├─ post_sampling_hook / token_threshold_and_tool_threshold
+├─ post_sampling_hook / token_threshold_and_natural_break
+└─ stop_hook_background / post_turn_background_extraction
+
+Mermaid Flowchart
+└─ 主链路 + 子链路 + 工具 + snapshot 证据
+
+Reading SOP
+└─ 如何从报告反向定位原始事件和 snapshot
+```
+
+### V1.1 示例流程图
+
+```mermaid
+flowchart TD
+  UA["user_action_id<br/>root"] --> Q0["main_thread query"]
+  Q0 --> T1["turn-1<br/>build prompt + sample"]
+  T1 --> ToolA["tool call<br/>read / edit / bash"]
+  ToolA --> T2["turn-2<br/>observe tool result"]
+  T2 --> S1["spawn session_memory<br/>reason: post_sampling_hook"]
+  S1 --> Q1["session_memory query"]
+  Q1 --> SM1["memory analysis"]
+  T2 --> S2["spawn extract_memories<br/>reason: stop_hook_background"]
+  S2 --> Q2["extract_memories query"]
+  Q2 --> EM1["memory extraction"]
+  T2 --> End["main query terminated"]
+```
+
+---
+
+## V1 成本模型
+
+不要只看 `input_tokens`。V1 的成本模型按下面口径拆分：
+
+```mermaid
+flowchart LR
+  Raw[Raw Input Tokens] --> Prompt[Total Prompt Input Tokens]
+  Read[Cache Read Tokens] --> Prompt
+  Create[Cache Create Tokens] --> Prompt
+  Prompt --> Billed[Total Billed Tokens]
+  Output[Output Tokens] --> Billed
+```
+
+| 指标 | 含义 |
+|---|---|
+| `raw_input_tokens` | 本次请求真正新增的裸输入 |
+| `cache_read_input_tokens` | 从缓存读取的上下文 |
+| `cache_create_input_tokens` | 新建缓存所需的输入 |
+| `total_prompt_input_tokens` | prompt 输入总量 |
+| `output_tokens` | 模型输出 |
+| `total_billed_tokens` | 估算总计费 token |
+| `subagent_amplification_ratio` | 子链路成本相对主线程的放大倍数 |
+
+这让你可以区分：
+
+- 是用户输入本身太长？
+- 是历史上下文太重？
+- 是 session memory 太贵？
+- 是 extract memories 在后台放大成本？
+- 是 candidate 真省钱，还是只是少跑了一段链路？
+
+---
+
+## V2：本地评测系统
+
+V2 不替代 V1 / V1.1，而是建立在它们之上：
+
+- V1 提供事实。
+- V1.1 帮你读懂单次 action。
+- V2 把事实绑定成实验，比较 baseline 和 candidate。
+
+```mermaid
+flowchart LR
+  Scenario[scenario<br/>任务定义] --> Experiment[experiment<br/>实验定义]
+  VariantA[baseline variant] --> Experiment
+  VariantB[candidate variant] --> Experiment
+
+  Experiment --> RunA[baseline run<br/>绑定 V1 evidence]
+  Experiment --> RunB[candidate run<br/>绑定 V1 evidence]
+
+  RunA --> DeepA[V1.1 deep explain<br/>必要时深挖 baseline action]
+  RunB --> DeepB[V1.1 deep explain<br/>必要时深挖 candidate action]
+
+  RunA --> ScoreA[score]
+  RunB --> ScoreB[score]
+
+  ScoreA --> Compare[compare report]
+  ScoreB --> Compare
+
+  Compare --> Summary[experiment summary]
+  Summary --> Decision[人工阅读 / 下一步决策]
+```
+
+### V2 对象模型
+
+| 对象 | 作用 | 目录 |
+|---|---|---|
+| `scenario` | 定义评测任务 | `tests/evals/v2/scenarios/` |
+| `variant` | 定义 baseline / candidate 配置 | `tests/evals/v2/variants/` |
+| `experiment` | 组合 scenario 与 variant | `tests/evals/v2/experiments/` |
+| `run` | 一次 scenario + variant 的事实记录 | `tests/evals/v2/runs/` |
+| `score` | run 上的评分结果 | `tests/evals/v2/scores/` |
+| `run_group` | 多次 repeat 的聚合单元 | `tests/evals/v2/run-groups/` |
+| `experiment summary` | 实验级 JSON 总结 | `tests/evals/v2/experiment-runs/` |
+| `batch report` | 人类可读 Markdown 报告 | `ObservrityTask/10-系统版本/v2/06-运行报告/` |
+| `feedback run` | V2.5 反馈闭环产物 | `tests/evals/v2/feedback/` |
+
+---
+
+## V2.2.5：真实实验闭环
+
+V2.2.5 的价值是让系统同时具备两条可用路径：
+
+```mermaid
+flowchart TB
+  subgraph Auto["自动路径 execute_harness"]
+    A1[读取 experiment] --> A2[执行 scenario]
+    A2 --> A3[注入 benchmark_run_id]
+    A3 --> A4[捕获 user_action_id]
+  end
+
+  subgraph Manual["保底路径 bind_existing"]
+    M1[手动跑 baseline / candidate] --> M2[拿到 user_action_id]
+    M2 --> M3[写入 action_bindings]
+  end
+
+  A4 --> V2[V2 record / score / compare]
+  M3 --> V2
+  V2 --> Summary[experiment summary]
+  Summary --> Explain[V1.1 deep explain<br/>深挖关键 action]
+```
+
+运行自动真实实验：
+
+```powershell
+bun run scripts/evals/v2_validate_manifests.ts
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/session_memory_runtime_sparse_vs_default.json
+```
+
+运行手动 fallback：
+
+```powershell
+.\scripts\evals\v2_manual_real_run.ps1 -ScenarioId "session_memory_trigger_sensitive" -VariantId "baseline_default" -ExperimentId "session_memory_runtime_sparse_vs_default_manual" -MaxTurns 12
+
+.\scripts\evals\v2_manual_real_run.ps1 -ScenarioId "session_memory_trigger_sensitive" -VariantId "candidate_session_memory_sparse" -ExperimentId "session_memory_runtime_sparse_vs_default_manual" -MaxTurns 12
+
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/session_memory_runtime_sparse_vs_default_manual.bind_existing.json
+```
+
+---
+
+## V2.3：Batch + Robustness
+
+V2.3 解决的问题是：**一次实验结果是否稳定？**
+
+它支持多 scenario、多 candidate、多次 repeat、run_group 聚合、stability summary、flaky status 和 batch markdown report。
+
+```mermaid
+flowchart TD
+  Exp[experiment manifest] --> S1[scenario A]
+  Exp --> S2[scenario B]
+
+  S1 --> B1[baseline repeat 1..N]
+  S1 --> C1[candidate repeat 1..N]
+  S2 --> B2[baseline repeat 1..N]
+  S2 --> C2[candidate repeat 1..N]
+
+  B1 --> RG1[run_group]
+  C1 --> RG2[run_group]
+  B2 --> RG3[run_group]
+  C2 --> RG4[run_group]
+
+  RG1 --> Stability[stability summary]
+  RG2 --> Stability
+  RG3 --> Stability
+  RG4 --> Stability
+
+  Stability --> Report[batch report]
+  Report --> Deep[V1.1 deep explain<br/>对异常 / flaky action 做深挖]
+```
+
+运行 V2.3 无成本 smoke：
+
+```powershell
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.robustness.smoke.json
+```
+
+重点看：
+
+- `repeat_success_rate`
+- `capture_failure_rate`
+- `total_billed_tokens_stddev`
+- `tool_call_count_variance`
+- `subagent_count_variance`
+- `turn_count_variance`
+- `flaky_status`
+
+---
+
+## V2.4：Long Context 专项
+
+V2.4 让系统开始系统地问：
+
+> 上下文变长之后，这个 harness 到底有没有稳住约束、事实和治理效果？
+
+```mermaid
+mindmap
+  root((Long Context))
+    Constraint Retention
+      硬约束是否保留
+      输出格式是否遵守
+    Fact Retrieval
+      关键事实是否找回
+      深层证据是否遗漏
+    Distractor Resistance
+      旧说明是否带偏
+      假路径是否污染判断
+    Compaction Pressure
+      compact 是否触发
+      saved tokens 是否可解释
+      session memory policy 是否生效
+```
+
+V2.4 新增的典型指标：
+
+| 指标 | 含义 |
+|---|---|
+| `context.retained_constraint_count` | 保留下来的约束数量 |
+| `context.lost_constraint_count` | 丢失的约束数量 |
+| `context.constraint_retention_rate` | 约束保持率 |
+| `context.retrieved_fact_hit_rate` | 关键事实命中率 |
+| `context.distractor_confusion_count` | 被干扰信息带偏次数 |
+| `context.compaction_trigger_count` | compact 触发次数 |
+| `context.compaction_saved_tokens` | compact 节省 token |
+| `context.manual_review_required` | 是否需要人工复核 |
+
+运行 fixture smoke：
+
+```powershell
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.long_context.fixture_smoke.json
+```
+
+运行小型真实链路 smoke：
+
+```powershell
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.long_context.real_smoke.json
+```
+
+验证长上下文 artifact：
+
+```powershell
+bun run scripts/evals/v2_verify_long_context.ts
+```
+
+---
+
+## V2.5：Feedback Loop Beta
+
+V2.5 的核心原则是：
+
+> 自动提建议，不自动改代码。
+
+```mermaid
+flowchart LR
+  Report[Experiment Report] --> Finding[Finding<br/>事实发现]
+  Finding --> Hypothesis[Hypothesis<br/>解释假设]
+  Hypothesis --> Proposal[Improvement Proposal<br/>改进建议]
+  Proposal --> Candidate[Candidate Variant Proposal<br/>候选方案草案]
+  Candidate --> Plan[Next Experiment Plan<br/>下一轮实验计划]
+  Plan --> Card[Human Approval Card<br/>人工审批卡]
+```
+
+运行 feedback：
+
+```powershell
+bun run scripts/evals/v2_run_feedback.ts --experiment-run tests/evals/v2/experiment-runs/v2_4_long_context_real_smoke_2026-05-03T060617173Z.json
+```
+
+验证 feedback artifact：
+
+```powershell
+bun run scripts/evals/v2_validate_feedback_artifacts.ts
+```
+
+生成人工优先结论草稿：
+
+```powershell
+bun run scripts/evals/v2_create_manual_conclusion.ts --experiment-run tests/evals/v2/experiment-runs/v2_5_long_context_real_smoke_expectation_contract_v0_2026-05-03T153229792Z.json
+```
+
+---
+
+## 推荐阅读路径
+
+### 第一次看项目
+
+```mermaid
+flowchart TD
+  A[本 README] --> B[ObservrityTask/README.md]
+  B --> C[V1 深度研究报告]
+  C --> D[V1.1 Deep Explain<br/>单 user_action_id 深度解析]
+  D --> E[tests/evals/v2/README.md]
+  E --> F[V2.2.5 指南]
+  F --> G[V2.3 指南]
+  G --> H[V2.4 指南]
+  H --> I[V2.5 指南]
+```
+
+### 刚跑完一次 query
+
+1. 运行 `rebuild_observability_db.ps1`
+2. 运行 `explain_action.ps1 -Latest`
+3. 看 action report 里的 Mermaid DAG
+4. 看 query / subagent / tool / usage
+5. 如果要进入评测，再把 `user_action_id` 绑定到 V2 run
+
+### 深挖一个 user_action_id
+
+1. 从 `user_actions` 表定位目标 action
+2. 用 `queries` 看主链和子链
+3. 用 `turns` 看 loop 结构
+4. 用 `tools` 看工具生命周期
+5. 用 `subagents` 看后台分叉原因
+6. 用 `events_raw + snapshots` 回到原始证据
+7. 用 `explain_action.ps1` 收敛成报告和 Mermaid
+8. 把报告沉淀到 `ObservrityTask/10-系统版本/v1` 的深度解析内容中
+
+### 判断 candidate 是否值得继续
+
+1. 先看 `experiment_validity`
+2. 再看 `runtime_difference_summary`
+3. 再看 `scorecard_summary`
+4. 再看 `risk_verdict`
+5. 如果是 V2.3+，必须看 `run_group` 与 `flaky_status`
+6. 如果出现异常或 flaky，用 V1.1 deep explain 深挖对应 `user_action_id`
+7. 如果是 V2.4+，继续看 `long_context_summary`
+8. 如果是 V2.5+，最后看 `approval card`
+
+---
+
+## 常用命令总表
+
+### 项目基础命令
+
+```bash
+bun install
+bun run dev
+bun run build
+bun run typecheck
+bun test
+```
+
+### V1 / V1.1 观测与深度解析
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\rebuild_observability_db.ps1
+
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\daily_summary.ps1
+
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\build_dashboard.ps1
+
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\explain_action.ps1 -Latest
+
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\explain_action.ps1 -UserActionId <user_action_id>
+
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\read_timeline.ps1 -UserActionId <user_action_id>
+```
+
+### V2 验证命令
+
+```powershell
+bun run scripts/evals/v2_validate_manifests.ts
+bun run scripts/evals/v2_validate_experiment_artifacts.ts
+bun run scripts/evals/v2_verify_bind_runner.ts
+bun run scripts/evals/v2_verify_execute_harness_alpha.ts
+bun run scripts/evals/v2_verify_long_context.ts
+bun run scripts/evals/v2_validate_feedback_artifacts.ts
+```
+
+### V2 实验命令
+
+```powershell
+# V2.2 execute_harness smoke
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.execute_harness.smoke.json
+
+# V2.2.5 real experiment
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/session_memory_runtime_sparse_vs_default.json
+
+# V2.3 robustness smoke
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.robustness.smoke.json
+
+# V2.4 long-context fixture smoke
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.long_context.fixture_smoke.json
+
+# V2.4 long-context real smoke
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.long_context.real_smoke.json
+
+# V2.5 expectation-contract follow-up
+bun run scripts/evals/v2_run_experiment.ts --experiment tests/evals/v2/experiments/_experiment.long_context.real_smoke.expectation_contract_v0.json
+```
+
+### V2.5 Feedback 命令
+
+```powershell
+bun run scripts/evals/v2_run_feedback.ts --experiment-run <experiment-run-json>
+
+bun run scripts/evals/v2_create_manual_conclusion.ts --experiment-run <experiment-run-json>
+```
+
+---
+
+## 目录地图
+
+```text
+.
+├─ src/
+│  └─ observability/
+│     └─ v2/
+│        ├─ evalTypes.ts
+│        └─ evalExperimentTypes.ts
+│
+├─ scripts/
+│  ├─ observability/
+│  │  ├─ build_duckdb_etl.ts
+│  │  ├─ rebuild_observability_db.ps1
+│  │  ├─ daily_summary.ps1
+│  │  ├─ build_dashboard.ps1
+│  │  ├─ read_timeline.ps1
+│  │  └─ explain_action.ps1
+│  │
+│  └─ evals/
+│     ├─ v2_run_experiment.ts
+│     ├─ v2_harness_execution.ts
+│     ├─ v2_record_run.ts
+│     ├─ v2_compare_runs.ts
+│     ├─ v2_score_registry.ts
+│     ├─ v2_run_feedback.ts
+│     └─ v2_create_manual_conclusion.ts
+│
+├─ tests/
+│  └─ evals/
+│     └─ v2/
+│        ├─ scenarios/
+│        ├─ fixtures/
+│        ├─ variants/
+│        ├─ experiments/
+│        ├─ score-specs/
+│        ├─ runs/
+│        ├─ scores/
+│        ├─ run-groups/
+│        ├─ experiment-runs/
+│        └─ feedback/
+│
+├─ ObservrityTask/
+│  ├─ README.md
+│  └─ 10-系统版本/
+│     ├─ v1/
+│     │  ├─ 01-总览/
+│     │  ├─ 04-专题研究/
+│     │  └─ V1.1 Deep Explain：单个 user_action_id 深度解析相关内容
+│     └─ v2/
+│        ├─ 01-总览/
+│        ├─ 02-实施任务书/
+│        ├─ 06-运行报告/
+│        └─ 07-反馈报告/
+│
+└─ .observability/
+   ├─ events-YYYYMMDD.jsonl
+   ├─ snapshots/
+   └─ observability_v1.duckdb
+```
+
+---
+
+## 典型工作流
+
+### 工作流 A：调试一次真实用户动作
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant R as Runtime
+  participant E as Events JSONL
+  participant D as DuckDB
+  participant P as Report
+
+  U->>R: 在 REPL 中提交 query
+  R->>E: 写入 events / snapshots
+  U->>D: rebuild_observability_db.ps1
+  D->>D: 构建 facts / views
+  U->>P: explain_action.ps1 -Latest
+  P->>U: Markdown + Mermaid + usage + branch points
+```
+
+### 工作流 B：深度解析一个 user_action_id
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant DB as DuckDB Facts
+  participant S as Snapshots
+  participant R as Deep Report
+  participant M as Mermaid
+
+  U->>DB: 选定 user_action_id
+  DB->>DB: 查询 queries / turns / tools / subagents
+  DB->>S: 关联 snapshot_ref
+  DB->>R: 汇总时序、原因、输出、延迟
+  R->>M: 生成复杂流程图
+  R->>U: 输出可读深度报告
+```
+
+### 工作流 C：比较 baseline 与 candidate
+
+```mermaid
+sequenceDiagram
+  participant Exp as Experiment
+  participant Base as Baseline
+  participant Cand as Candidate
+  participant V1 as V1 Evidence
+  participant V11 as V1.1 Deep Explain
+  participant V2 as V2 Runner
+  participant Out as Summary
+
+  Exp->>Base: run baseline
+  Base->>V1: capture user_action_id
+  Exp->>Cand: run candidate
+  Cand->>V1: capture user_action_id
+  V1->>V2: record run
+  V2->>V2: score / compare / risk
+  V2->>Out: experiment summary + report
+  Out->>V11: 对异常 action 做深度解释
+```
+
+### 工作流 D：从实验结果生成下一步建议
+
+```mermaid
+sequenceDiagram
+  participant S as Experiment Summary
+  participant F as Feedback Runner
+  participant Q as Proposal Queue
+  participant H as Human
+
+  S->>F: 读取实验结果
+  F->>F: extract findings
+  F->>F: build hypotheses
+  F->>F: generate proposals
+  F->>Q: rank proposals
+  Q->>H: approval card
+  H->>H: 决定是否进入下一轮实验
+```
+
+---
+
+## 设计原则
+
+### 1. 本地优先
+
+所有核心事实都落在本地：JSONL、snapshot sidecar、DuckDB、Markdown report、experiment artifact。
+
+### 2. 事实先于结论
+
+V2 不直接“相信模型说法”，而是先绑定 V1 的事实证据，再产生 run / score / compare。
+
+```text
+No evidence -> no score.
+No binding -> no experiment.
+No repeat -> no stability claim.
+No manual review -> no semantic final verdict.
+```
+
+### 3. Deep Explain 必须可还原
+
+V1.1 的重点不是写漂亮总结，而是从一个 `user_action_id` 出发，能够回到原始事件、snapshot、DuckDB 表和每个分叉点原因。
+
+### 4. 自动化不越权
+
+V2.5 可以生成建议，但不自动改代码、不自动 promote candidate、不自动合并结论。
+
+### 5. 不把单次成功误认为稳定规律
+
+V2.3 之后，真正有价值的问题不再是“这一次好不好”，而是多次 repeat 后是否仍然稳定。
+
+### 6. 长上下文必须保留人工复核
+
+V2.4 承认长上下文质量不是一个 token 数或单分数能完全裁决的，因此保留 `manual_review_required` 是设计的一部分，而不是缺陷。
+
+---
+
+## 当前边界
+
+这套系统已经能做很多事情，但仍然有明确边界：
+
+- 不是线上 APM 平台
+- 不是分布式 trace 基础设施
+- 不保证跨平台脚本都已完善
+- 不自动证明 candidate 全局更优
+- 不自动替代人工评审
+- 不应该把 fixture smoke 当成真实模型收益结论
+- 不应该把 feedback proposal 当成最终决策
+
+---
+
+## 适合谁使用？
+
+- 想研究 Claude Code / CCB agent loop 的开发者
+- 想知道一次 query 背后实际发生了什么的人
+- 想深度解析单个 `user_action_id` 的人
+- 想调试 tool call、subagent、session memory、context compaction 的人
+- 想把 agent 改动做成可复盘实验的人
+- 想用本地证据链比较 baseline / candidate 的人
+- 想搭建“评测 -> 反馈 -> 下一轮实验”闭环的人
+
+---
+
+## 贡献方向
+
+| 方向 | 示例 |
+|---|---|
+| V1 观测增强 | 更低 orphan event rate、更强 snapshot 校验 |
+| V1.1 Deep Explain | 更复杂 Mermaid、步骤原因、输出摘要、延迟标注 |
+| V1 报告增强 | 更清晰的 action 阅读模板 |
+| V2 score-spec | 更细的语义评分、更多 evidence requirement |
+| V2.3 稳定性 | 更可靠的 flaky 判定、更好的 repeat 聚合 |
+| V2.4 长上下文 | 更多 scenario family、更强 manual review contract |
+| V2.5 feedback | 更严格 proposal taxonomy、更清晰 approval card |
+| 跨平台体验 | Linux/macOS 脚本、路径自动发现 |
+| 文档与示例 | 真实报告截图、最佳实践 cookbook |
+
+---
+
+## FAQ
+
+### Q: 我只是想看最近一次 query 发生了什么，应该从哪里开始？
+
+运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\rebuild_observability_db.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\observability\explain_action.ps1 -Latest
+```
+
+然后先读生成的 action report。
+
+### Q: V1 和 V1.1 Deep Explain 的区别是什么？
+
+V1 解决“事实有没有被记录下来”。
+
+V1.1 Deep Explain 解决“围绕一个具体 `user_action_id`，能不能把完整过程、原因、输出、延迟和 Mermaid 流程讲清楚”。
+
+### Q: V1.1 在仓库哪里？
+
+它对应 `ObservrityTask/10-系统版本/v1` 体系下关于单个 `user_action_id` 深度解析的内容。
+
+### Q: V1 / V1.1 和 V2 的关系是什么？
+
+V1 是事实观测系统，V1.1 是单 action 深度解释层，V2 是评测系统。V2 的 run 和 score 必须回到 V1 事实；遇到异常或 flaky 时，再用 V1.1 深挖具体 action。
+
+### Q: 为什么不能只看 token 降低就说 candidate 更好？
+
+因为 token 降低可能来自少跑链路、capture 失败、任务没完成、上下文丢失或语义质量下降。必须同时看 `experiment_validity`、`runtime_difference_summary`、`scorecard_summary`、`risk_verdict` 和必要的人工复核。
+
+### Q: fixture smoke 能证明真实效果吗？
+
+不能。fixture smoke 主要证明 runner、schema、report、artifact 管线是通的。真实收益仍然需要 real experiment 或 real smoke 证明。
+
+### Q: V2.5 会自动改代码吗？
+
+不会。V2.5 当前是 feedback loop beta：自动生成建议，不自动改代码，不自动合并，不绕过人工审批。
+
+---
+
+## 来源说明
+
+本项目来自原始 CCB 项目：
+
+- Upstream: [https://github.com/claude-code-best/claude-code](https://github.com/claude-code-best/claude-code)
+
+当前仓库在此基础上加入并整理了本地可观测、V1.1 Deep Explain、V2 评测、长上下文专项与反馈闭环相关内容。
+
+---
+
+## License / 声明
+
+本项目仅供学习、研究与工程实验使用。
+
+原始 Claude Code 相关权利归其各自权利方所有。
+
+CCB 原始项目来源见：[claude-code-best/claude-code](https://github.com/claude-code-best/claude-code)。
