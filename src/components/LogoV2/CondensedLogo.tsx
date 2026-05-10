@@ -15,7 +15,7 @@ import {
 import { renderModelSetting } from '../../utils/model/model.js'
 import { OffscreenFreeze } from '../OffscreenFreeze.js'
 import { AnimatedClawd } from './AnimatedClawd.js'
-import { Clawd } from './Clawd.js'
+import { Clawd, ORION_LOGO_WIDTH } from './Clawd.js'
 import {
   GuestPassesUpsell,
   incrementGuestPassesSeenCount,
@@ -27,13 +27,16 @@ import {
   useShowOverageCreditUpsell,
 } from './OverageCreditUpsell.js'
 
+const PRODUCT_DISPLAY_NAME = 'Claude Code Transparent'
+const PRODUCT_DISPLAY_VERSION = '2.5'
+
 export function CondensedLogo(): ReactNode {
   const { columns } = useTerminalSize()
   const agent = useAppState(s => s.agent)
   const effortValue = useAppState(s => s.effortValue)
   const model = useMainLoopModel()
   const modelDisplayName = renderModelSetting(model)
-  const { version, cwd, billingType, agentName: agentNameFromSettings } = getLogoDisplayData()
+  const { cwd, billingType, agentName: agentNameFromSettings } = getLogoDisplayData()
 
   // Prefer AppState.agent (set from --agent CLI flag) over settings
   const agentName = agent ?? agentNameFromSettings
@@ -52,15 +55,13 @@ export function CondensedLogo(): ReactNode {
     }
   }, [showOverageCreditUpsell, showGuestPassesUpsell])
 
-  // Calculate available width for text content
-  // Account for: condensed clawd width (11 chars) + gap (2) + padding (2) = 15 chars
-  const textWidth = Math.max(columns - 15, 20)
-
-  // Truncate version to fit within available width, accounting for "Claude Code v" prefix
-  const versionPrefix = 'Claude Code v'
-  const truncatedVersion = truncate(
-    version,
-    Math.max(textWidth - versionPrefix.length, 6),
+  // Calculate available width for text content.
+  // Account for: ORION wordmark width + gap (2) + padding/spacing safety (2).
+  const textWidth = Math.max(columns - ORION_LOGO_WIDTH - 4, 20)
+  const versionSuffix = ` v${PRODUCT_DISPLAY_VERSION}`
+  const productName = truncate(
+    PRODUCT_DISPLAY_NAME,
+    Math.max(textWidth - versionSuffix.length, 10),
   )
 
   const effortSuffix = getEffortSuffix(model, effortValue)
@@ -91,8 +92,8 @@ export function CondensedLogo(): ReactNode {
       {/* Info */}
       <Box flexDirection="column">
         <Text>
-          <Text bold>Claude Code</Text>{' '}
-          <Text dimColor>v{truncatedVersion}</Text>
+          <Text bold>{productName}</Text>{' '}
+          <Text dimColor>v{PRODUCT_DISPLAY_VERSION}</Text>
         </Text>
         {shouldSplit ? (
           <>
