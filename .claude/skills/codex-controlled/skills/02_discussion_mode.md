@@ -1,123 +1,91 @@
 ---
-title: 技术方案讨论模式
+title: Discussion Mode
 type: reference
-description: Use when the user and Codex need to align on project understanding, tradeoffs, terminology, risks, and decision points before implementation.
+description: Use when the user and Codex need to align on project understanding, tradeoffs, terminology, risks, and decision points before planning or implementation.
 ---
 
-# Skill: 技术方案讨论模式（Discussion Mode）
+# Skill: Discussion Mode
 
-## 目标
+## Purpose
 
-当用户和 Codex 对项目理解、技术方案、约束条件、实现路径不完全一致时，进入讨论模式。
+Discussion Mode aligns understanding before execution.
+It is not a slower form of execution.
+It is a pause that protects correctness, boundaries, and user agency.
 
-讨论模式不是执行模式。  
-它的目标是让双方把意思说清楚，再由用户拍板。
+## Trigger Conditions
 
----
+Use this mode when:
 
-## 适用场景
+- The user says they do not understand.
+- The user disagrees with the proposed plan or architecture.
+- The user asks why a decision was made.
+- The task has competing solution paths and the tradeoffs matter.
+- The current truth source is disputed or unclear.
 
-- 用户说“我没想清楚”
-- 用户质疑 agent 的方案
-- 用户觉得 agent 用不懂的术语解释不懂的术语
-- 用户和 agent 对项目状态、技术栈、解决思路不一致
-- 需要比较多个方案
-- 需要解释为什么写代码、为什么写文档、为什么改架构
+## Execution Suspension Rule
 
----
+If the user expresses confusion, disagreement, or asks why, suspend execution-oriented Superpowers skills.
+Do not continue planning or execution until the user understands the key decision points.
 
-## 讨论模式禁止事项
+This suspension includes, when active:
 
-在讨论模式中，Codex 不得：
+- `writing-plans`
+- `test-driven-development`
+- `systematic-debugging`
+- `dispatching-parallel-agents`
+- `using-git-worktrees`
+- `subagent-driven-development`
 
-- 写代码
-- 改文件
-- 生成最终任务书
-- 自动进入执行
-- 试图用更长总结替代解释
-- 用用户不懂的新术语解释旧术语
+## Discussion Outputs
 
----
+### Problem statement
 
-## 输出结构
+Summarize the real decision in one short paragraph.
 
-### 1. 分歧定位
+### Alignment map
 
 ```md
-我认为当前分歧可能在：
-1. ...
-2. ...
-3. ...
-```
-
-### 2. 双方理解对齐
-
-```md
-我理解你的意思是：
+What the user appears to want:
 ...
 
-我目前的判断是：
+What the current repository/runtime suggests:
 ...
 
-我们不一致的地方是：
+Where the mismatch is:
 ...
 ```
 
-### 3. 术语降维
+### Terms and tradeoffs
 
-列出本轮关键术语：
+| Item | Plain explanation | Why it matters here |
+|---|---|---|
+| Term / option | ... | ... |
 
-| 术语 | 大白话解释 | 在本项目中的具体含义 | 对应文件/数据结构 | 不理解会影响什么 |
-|---|---|---|---|---|
-
-### 4. 方案对比
-
-| 方案 | 做法 | 优点 | 风险 | 适合场景 | 是否推荐 |
-|---|---|---|---|---|---|
-
-### 5. 拍板点
+### Decision points
 
 ```md
-需要你拍板：
-A. ...
-B. ...
-C. ...
+Decision A:
+- Option 1:
+- Option 2:
+- Recommended choice:
+- Reason:
 ```
 
----
+## Prohibited Behavior
 
-## 讨论结束条件
+Do not:
 
-只有当以下内容明确后，才能退出讨论模式：
+- Write code
+- Edit files
+- Present a design conclusion as already approved
+- Use jargon to avoid explanation
+- Continue into execution because the answer seems "probably fine"
 
-- 用户理解关键术语
-- 用户理解方案差异
-- 用户理解风险
-- 用户知道自己要拍板什么
-- 用户明确选择下一步
+## Exit Criteria
 
----
+Leave Discussion Mode only when the user can reasonably understand:
 
-## 讨论模式的回答风格
-
-- 用短段落
-- 少用新术语
-- 允许反复追问
-- 不急着收束
-- 不把“不确定”伪装成确定
-- 不把“我建议”伪装成“必须如此”
-
----
-
-## 小型讨论模板
-
-```md
-当前讨论主题：
-我理解你的疑问：
-我认为有几种可能解释：
-方案 A：
-方案 B：
-我更推荐：
-原因：
-你需要拍板：
-```
+- The key decision points
+- The tradeoffs
+- The risks
+- What approval they are giving

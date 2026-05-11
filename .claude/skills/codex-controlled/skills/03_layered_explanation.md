@@ -1,165 +1,79 @@
 ---
-title: 分层解释与实现讲解
+title: Layered Explanation
 type: reference
 description: Use when Codex must explain complex code, architecture, documents, schemas, runners, scorers, gates, or design choices in layered language.
 ---
 
-# Skill: 分层解释与实现讲解（Layered Explanation）
+# Skill: Layered Explanation
 
-## 目标
+## Purpose
 
-解决“用用户不懂的内容解释用户不懂的内容”的问题。
+Layered Explanation turns complex implementation or design into user-fit understanding.
+It prevents "explanation by summary" and prevents execution from outrunning comprehension.
 
-当 Codex 完成代码、文档、方案、任务书或复杂分析后，不能只输出摘要，必须提供分层解释。
+## When to use
 
----
+Use this mode when:
 
-## 适用场景
+- The user says they are confused.
+- The user asks why something is designed this way.
+- The task introduces unfamiliar terminology, architecture, schema, runner, scorer, gate, or workflow.
+- A checkpoint requires more than a short summary.
+- The user wants to understand why a specific Superpowers skill was selected or not selected.
 
-- 用户看不懂理解清单
-- 本轮出现大量术语
-- Codex 写了代码
-- Codex 写了文档
-- Codex 引入新数据结构、新 schema、新 runner、新 scorer、新 gate
-- 用户需要知道“为什么这么设计”
+## Execution Suspension Rule
 
----
+If the user expresses confusion, disagreement, or asks why, suspend execution-oriented Superpowers skills.
+Do not continue planning or execution until the user understands the key decision points.
 
-## 分层解释结构
+## Explanation Layers
 
-### Layer 1：一句话解释
+### Layer 1: One-sentence result
 
-用一句话说明这次做了什么。
+Explain what changed or what is being proposed in one sentence.
 
-```md
-这次做了什么：
-...
-```
+### Layer 2: Plain-language explanation
 
----
+Explain the idea without assuming project-specific jargon.
 
-### Layer 2：大白话解释
+### Layer 3: Terms table
 
-不用新术语解释一遍。
+| Term | Plain meaning | Concrete meaning in this project | Reference |
+|---|---|---|---|
+| ... | ... | ... | ... |
 
-```md
-不用术语说：
-...
-```
+### Layer 4: Structure or flow
 
----
+If code or architecture is involved, explain:
 
-### Layer 3：术语解释
+- Which files or modules matter
+- How control or data flows through them
+- Why the split exists
 
-| 术语 | 大白话含义 | 本项目中的具体含义 | 对应位置 | 不理解会影响什么 |
-|---|---|---|---|---|
+### Layer 5: Design choice
 
-要求：
+Explain:
 
-- 不得用未解释的新术语解释旧术语
-- 每个术语必须落到本项目具体对象
-- 如果术语只是临时概念，要说明
+- Alternatives considered
+- Why the current choice won
+- What tradeoff it accepts
+- What would invalidate the decision
 
----
+## Prohibited Behavior
 
-### Layer 4：代码结构解释
+Do not:
 
-如果写了代码，必须输出：
+- Assume the user understood because an implementation exists
+- Hide uncertainty inside polished summaries
+- Use new jargon to explain old jargon
+- Delay all explanation until after implementation
 
-```md
-## 代码实现讲解卡
+## Exit Criteria
 
-### 本轮改了哪些文件
-- 文件：
-  - 改动目的：
-  - 系统角色：
-  - 为什么改这里：
+The explanation is sufficient only when the user can reasonably answer:
 
-### 代码如何串起来
-命令/入口
-→ ...
-→ ...
-→ 输出
-
-### 数据如何流动
-输入：
-中间处理：
-输出：
-
-### 为什么这样组织
-- 为什么拆成这些文件：
-- 为什么不是写在一个文件里：
-- 为什么不是改旧模块：
-- 哪些地方为了后续扩展：
-```
-
----
-
-### Layer 5：文档必要性解释
-
-如果写了文档，必须输出：
-
-```md
-## 文档必要性说明卡
-
-### 这份文档解决什么问题
-...
-
-### 为什么不能只靠代码
-...
-
-### 读者是谁
-...
-
-### 是长期规范、临时报告，还是 checkpoint
-...
-
-### 不写它会有什么后果
-...
-```
-
----
-
-### Layer 6：设计选择解释
-
-```md
-## 设计选择说明卡
-
-### 考虑过哪些替代方案
-方案 A：
-方案 B：
-
-### 为什么选择当前方案
-...
-
-### 当前方案牺牲了什么
-...
-
-### 风险是什么
-...
-
-### 如何验证风险没有发生
-...
-```
-
----
-
-## 禁止事项
-
-- 禁止只给“看起来很清晰”的摘要
-- 禁止用“最佳实践”代替具体理由
-- 禁止把实现结果包装成用户已经理解
-- 禁止把术语堆在一起不解释
-
----
-
-## 退出条件
-
-用户能回答：
-
-- 这次做了什么
-- 为什么这么做
-- 哪些文件参与了
-- 数据怎么流动
-- 有什么风险
-- 怎么验证
+- What changed or will change
+- Why this approach was chosen
+- Where the change lives
+- What risk remains
+- How to verify it

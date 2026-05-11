@@ -1,111 +1,154 @@
 ---
-title: Preflight / Hygiene Gate
+title: Project Hygiene Gate
 type: reference
-description: Use before work involving logs, metrics, ETL, dashboards, runners, scorers, gates, schemas, data cleaning, or evaluation experiments.
+description: Use before implementation when project state, structure, generated files, truth sources, or observability/data integrity may affect the task.
 ---
 
-# Skill: Preflight / Hygiene Gate
+# Skill: Project Hygiene Gate
 
-## 目标
+## Purpose
 
-在任何涉及日志、指标、ETL、dashboard、runner、scorer、gate、schema、数据清洗、评测实验的任务前，先确认系统状态是否干净、输入是否可信、历史数据是否会污染结果。
+Use before implementation when project state, structure, generated files, or the current truth source may be unclear.
 
----
+This gate is broader than observability work.
+It applies to normal engineering work when repository state or blast radius is uncertain.
 
-## 适用场景
+## A. General Project Hygiene
 
-- 可观测系统
-- 指标计算
-- 数据库重建
-- dashboard
-- V2 experiment runner
-- score / gate
-- schema migration
-- 旧日志清洗
-- baseline vs candidate 对比
+Use before implementation when project state, structure, generated files, or current truth source may be unclear.
 
----
+Check:
 
-## 必查项
+1. Working tree cleanliness
+2. Project structure clarity
+3. Process/generated file locations
+4. Source of truth priority
+5. Build/test/lint command availability
+6. Blast radius
+7. Need for git worktree isolation
 
-### 1. 数据新鲜度
+### General Project Hygiene details
 
-- 当前事件文件是否最新
-- 数据库是否过期
-- summary/dashboard 是否读旧库
-- 是否需要 rebuild
+#### 1. Working tree cleanliness
 
-### 2. 数据污染
+- Are there unrelated local edits?
+- Are generated files already present?
+- Could current changes confuse the implementation or verification loop?
 
-- 是否混入旧版本日志
-- 是否混入旧 schema
-- 是否存在旧 run / score / report 被误用
-- 是否需要归档/清洗
+#### 2. Project structure clarity
 
-### 3. 引用闭合
+- Which directory is the real implementation area?
+- Which files are docs, generated outputs, fixtures, or artifacts?
+- Which subprojects or packages are actually in play?
 
-- snapshot_ref 是否存在
-- user_action_id 是否存在
-- run 是否绑定 V1 事实证据
-- score 是否有 evidence_ref
-- gate 是否有 score 输入
+#### 3. Process/generated file locations
 
-### 4. Schema 兼容
+- Where do builds, reports, snapshots, caches, logs, and generated outputs land?
+- Which paths should never be hand-edited?
 
-- manifest 字段是否和 validator 一致
-- score-spec 是否存在
-- gate policy 是否存在
-- experiment 引用是否有效
+#### 4. Source of truth priority
 
-### 5. 影响分析
+- What is the current authoritative source for this task?
+- If docs, code, and runtime disagree, which source wins?
 
-- 影响哪些模块
-- 影响哪些指标
-- 影响哪些报表
-- 影响哪些已有结论
-- 是否造成局部正确、全局错误
+#### 5. Build/test/lint command availability
 
----
+- What commands exist for verification?
+- Which ones are authoritative for this area?
+- Are there known gaps in the local verification setup?
 
-## 输出模板
+#### 6. Blast radius
+
+- Which files, packages, schemas, reports, or workflows could this task affect?
+- Is the task still small enough for the chosen control level?
+
+#### 7. Need for git worktree isolation
+
+- Is the workspace dirty or risky enough to justify `using-git-worktrees`?
+- Would isolation reduce cross-task contamination?
+
+## B. Data / Observability Hygiene
+
+Use additionally when the task involves logs, metrics, ETL, dashboard, runner, scorer, gate, schema, data cleaning, or experiments.
+
+Check:
+
+1. Data freshness
+2. Data pollution
+3. Reference closure
+4. Schema compatibility
+5. Impact analysis
+
+### Data / Observability Hygiene details
+
+#### 1. Data freshness
+
+- Are the current event files up to date?
+- Is the database stale?
+- Are summaries or dashboards reading old outputs?
+- Is a rebuild required before interpretation?
+
+#### 2. Data pollution
+
+- Are old logs mixed into the current dataset?
+- Are old schema versions still present?
+- Are prior runs, scores, or reports being reused incorrectly?
+- Is cleanup or archival required?
+
+#### 3. Reference closure
+
+- Does `snapshot_ref` exist?
+- Does `user_action_id` exist?
+- Is each run tied to the required evidence?
+- Does each score have an `evidence_ref`?
+- Does each gate consume the expected score input?
+
+#### 4. Schema compatibility
+
+- Do manifest fields still match validators?
+- Does the score spec exist?
+- Does the gate policy exist?
+- Are experiment references still valid?
+
+#### 5. Impact analysis
+
+- Which modules are affected?
+- Which metrics are affected?
+- Which reports or dashboards are affected?
+- Which previous conclusions become less trustworthy?
+- Could a local fix create a global inconsistency?
+
+## Output Template
 
 ```md
-## Preflight / Hygiene Gate
+## Project Hygiene Gate
 
-### 数据新鲜度
-- 结果：
-- 证据：
-- 是否通过：
+### A. General Project Hygiene
+- Working tree cleanliness:
+- Project structure clarity:
+- Process/generated file locations:
+- Source of truth priority:
+- Build/test/lint command availability:
+- Blast radius:
+- Need for git worktree isolation:
+- Result: PASS / FAIL / CONDITIONAL
 
-### 数据污染
-- 结果：
-- 证据：
-- 是否通过：
+### B. Data / Observability Hygiene
+- Applicable: yes / no
+- Data freshness:
+- Data pollution:
+- Reference closure:
+- Schema compatibility:
+- Impact analysis:
+- Result: PASS / FAIL / CONDITIONAL
 
-### 引用闭合
-- 结果：
-- 证据：
-- 是否通过：
-
-### Schema 兼容
-- 结果：
-- 证据：
-- 是否通过：
-
-### Impact Analysis
-- 影响模块：
-- 影响指标：
-- 影响报表：
-- 影响已有结论：
-- 风险：
-
-### 结论
-- 通过 / 不通过
-- 如果不通过，必须先处理：
+### Gate Decision
+- Proceed / Pause
+- Required fixes before implementation:
 ```
 
----
+## Hard Rules
 
-## 硬规则
-
-Preflight 不通过，不得进入实现。
+- If General Project Hygiene fails, do not implement yet.
+- If Data / Observability Hygiene applies and fails, do not implement yet.
+- Level 3 work should not skip this gate.

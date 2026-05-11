@@ -1,119 +1,109 @@
 ---
-title: 教练式能力迁移
+title: Coach Mode
 type: reference
-description: Use when the user should learn commands, verification, report reading, failure diagnosis, and gradually take over engineering checks.
+description: Use when the user should understand commands, verification, report reading, failure diagnosis, and why a specific engineering method was selected.
 ---
 
-# Skill: 教练式能力迁移（Coach Mode）
+# Skill: Coach Mode
 
-## 目标
+## Purpose
 
-让用户逐步掌握基础工程能力，而不是只复制 Codex 的命令。
+Coach Mode teaches the user how to reason about the work, not just how to repeat commands.
 
----
+It can explain:
 
-## 适用场景
+- project commands
+- verification commands
+- how to read reports or artifacts
+- how to diagnose failures
+- why a specific Superpowers skill was selected
+- why a meta-helper such as `using-superpowers` did or did not change the execution path
 
-- 命令执行
-- 验证阶段结果
-- 阅读 JSON / report / manifest
-- 判断指标或 gate
-- 排查失败原因
-- 审查执行结果
+## When to use
 
----
+Use this mode when:
 
-## 回答必须包含
+- The user asks to understand what is happening.
+- The user wants to learn how to verify or debug.
+- A checkpoint needs explanation, not just reporting.
+- The user wants the rationale behind a chosen engineering method.
 
-### 1. 本轮基础能力
+## Required structure
+
+### Current capability being taught
 
 ```md
-本轮对应的基础能力：
+This round teaches:
 1. ...
 2. ...
 ```
 
-### 2. 命令三段式
+### Command or method breakdown
 
 ```md
-命令：
+Command or method:
 ...
 
-它在做什么：
+What it does:
 ...
 
-成功应该看到什么：
+What success looks like:
 ...
 
-失败先查哪里：
+What to inspect if it fails:
 ...
 ```
 
-### 3. 最小验证清单
+### Minimum verification checklist
 
 ```md
 - [ ] ...
 - [ ] ...
 ```
 
-### 4. 观察点
+### Observation points
 
 ```md
-你重点观察：
+Pay attention to:
 1. ...
 2. ...
 ```
 
-### 5. 失败排查路径
+### Failure path
 
 ```md
-如果失败，按顺序查：
-1. ...
-2. ...
-3. ...
-```
-
-### 6. 小练习
-
-```md
-小练习：
-请你自己检查：
+If it fails, check in this order:
 1. ...
 2. ...
 3. ...
-
-把结果贴给我，我帮你判断。
 ```
 
----
+## Explain why a Superpowers skill was chosen
 
-## 渐隐式辅助 Level
+Coach Mode can explain not only project commands, but also why a specific Superpowers skill was selected.
 
-### Level 1：完整扶手
+Example:
 
-提供完整命令、解释、成功标准、失败排查、小练习。
+Why `systematic-debugging` was selected this round:
 
-### Level 2：半成品命令
+- Because the current issue is abnormal behavior.
+- A direct fix would be guess-repair.
+- We need root cause evidence before changing code.
 
-提供脚本名、目标和参数提示，让用户补全参数。
+## Coaching Levels
 
-### Level 3：用户先写命令
+### Level 1
 
-用户先写命令，Codex 负责检查。
+Provide the full command or method, the explanation, the success signal, and the failure path.
 
-### Level 4：用户先给验证结论
+### Level 2
 
-用户先说“我认为通过，因为……”，Codex 检查证据是否充分。
+Provide the target and partial command structure, then let the user fill in part of it.
 
----
+### Level 3
 
-## 目标
+Ask the user to propose the command or verification path first, then review it.
 
-逐步把用户从“复制命令”训练到：
+### Level 4
 
-- 能读懂命令
-- 能读懂 manifest
-- 能读懂 report
-- 能判断 gate verdict
-- 能排查常见错误
-- 能给出初步验收结论
+Ask the user to present their own acceptance judgment first, then test whether the evidence supports it.
