@@ -58,6 +58,16 @@
 7. 优先读 `Dialogue` 和 `Evidence`
 8. 如果只想看某个分支，点击 fork 起点后使用 `Clear Focus`
 
+<p align="center">
+  <img src="docs/images/semantic-viewer-panel.svg" alt="Semantic viewer panel overview" width="1100">
+</p>
+
+这张示意图对应的是当前 viewer 的核心结构：
+
+- 左侧：按 `action id` 搜索并选择 action
+- 中间：主线程居中，fork 向两侧展开
+- 右侧：节点详情抽屉，`Dialogue` 是最该先读的 tab
+
 面板布局示意图：
 
 ```text
@@ -88,6 +98,17 @@ flowchart TD
   C -. child result .-> F["later parent turn"]
   D -. child result .-> F
 ```
+
+<p align="center">
+  <img src="docs/images/semantic-viewer-dialogue.svg" alt="How to read a dialogue drawer" width="1100">
+</p>
+
+这张示意图讲的是节点点击后的阅读方式：
+
+- 先确认你点到的是主线程节点还是子 query 节点
+- `Assistant (carried into this turn)` 代表带入上下文，不一定是本轮新回复
+- `User` 在子 query 里可能是内部任务提示，不一定是真人输入
+- 最后一个 `Assistant` 往往才是这个子 query 的真实产出
 
 右侧详情抽屉怎么读：
 

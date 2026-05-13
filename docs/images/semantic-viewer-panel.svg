@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Semantic Action Viewer panel overview</title>
+  <desc id="desc">Schematic of the semantic action viewer with a search sidebar, centered main thread graph, branch nodes, and a right-side detail drawer.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f4f7fb; }
+      .card { fill: #ffffff; stroke: #d8e2ef; stroke-width: 1.5; }
+      .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #17324d; }
+      .subtitle { font: 600 16px 'Segoe UI', Arial, sans-serif; fill: #35516d; }
+      .body { font: 14px 'Segoe UI', Arial, sans-serif; fill: #3c4f63; }
+      .small { font: 12px 'Segoe UI', Arial, sans-serif; fill: #5f7388; }
+      .muted { fill: #7f8fa1; }
+      .accent { fill: #1f6feb; }
+      .line { stroke: #8fa8c3; stroke-width: 2.5; fill: none; }
+      .fork { stroke: #2f6f94; stroke-width: 3; stroke-dasharray: 8 6; fill: none; }
+      .ret { stroke: #8a5cf6; stroke-width: 2.5; stroke-dasharray: 6 5; fill: none; }
+      .node-main { fill: #e8f1ff; stroke: #5b8dd8; stroke-width: 2; }
+      .node-branch-a { fill: #fff2dd; stroke: #e39b37; stroke-width: 2; }
+      .node-branch-b { fill: #e5faef; stroke: #3fa56b; stroke-width: 2; }
+      .node-compact { fill: #f0e9ff; stroke: #8a5cf6; stroke-width: 2; }
+      .badge { fill: #1f6feb; }
+      .badgeText { font: 700 11px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+      .tab { fill: #eef3f8; stroke: #d7e1ec; stroke-width: 1; }
+      .tab-active { fill: #fff4e6; stroke: #f0c27a; stroke-width: 1.5; }
+      .dialogue-a { fill: #fff4eb; stroke: #efc99a; stroke-width: 1; }
+      .dialogue-t { fill: #edf9ef; stroke: #aad4b0; stroke-width: 1; }
+      .dialogue-u { fill: #ebf4ff; stroke: #9fc0eb; stroke-width: 1; }
+      .chip { fill: #ffffff; stroke: #d5deea; stroke-width: 1; }
+      .step { fill: #17324d; }
+      .stepText { font: 700 14px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+    </style>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8fa8c3"/>
+    </marker>
+    <marker id="arrowFork" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6f94"/>
+    </marker>
+    <marker id="arrowReturn" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a5cf6"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="760"/>
+  <text class="title" x="44" y="54">Semantic Action Viewer</text>
+  <text class="body" x="44" y="84">Search an action, follow the centered main thread, then click a node to inspect faithful dialogue and evidence.</text>
+
+  <rect class="card" x="36" y="116" rx="20" ry="20" width="1208" height="608"/>
+
+  <rect class="card" x="56" y="140" rx="16" ry="16" width="246" height="560"/>
+  <text class="subtitle" x="80" y="176">1. Search</text>
+  <rect class="chip" x="80" y="198" rx="10" ry="10" width="198" height="44"/>
+  <text class="body" x="96" y="225">action id: c6602631</text>
+  <text class="small" x="80" y="278">matched actions</text>
+  <rect class="chip" x="80" y="294" rx="12" ry="12" width="198" height="54"/>
+  <text class="body" x="96" y="318">c6602631...</text>
+  <text class="small" x="96" y="338">explicit_user_action_id</text>
+  <rect class="chip" x="80" y="362" rx="12" ry="12" width="198" height="54"/>
+  <text class="body" x="96" y="386">04638a09...</text>
+  <text class="small" x="96" y="406">latest</text>
+  <text class="small" x="80" y="456">Use the left list to open a generated</text>
+  <text class="small" x="80" y="474">viewer without touching raw payloads.</text>
+
+  <rect class="card" x="322" y="140" rx="16" ry="16" width="586" height="560"/>
+  <text class="subtitle" x="346" y="176">2. Graph canvas</text>
+  <text class="small" x="346" y="198">Main thread in the center. Child queries branch left and right.</text>
+
+  <path class="line" d="M 615 240 L 615 520" marker-end="url(#arrowBlue)"/>
+
+  <rect class="node-main" x="530" y="220" rx="14" ry="14" width="170" height="54"/>
+  <text class="body" x="552" y="245">repl_main_thread</text>
+  <text class="small" x="552" y="264">turn-14</text>
+
+  <rect class="node-main" x="512" y="322" rx="14" ry="14" width="206" height="64"/>
+  <text class="body" x="535" y="348">repl_main_thread</text>
+  <text class="small" x="535" y="367">turn-15</text>
+  <rect class="badge" x="656" y="334" rx="11" ry="11" width="46" height="22"/>
+  <text class="badgeText" x="667" y="349">fork:2</text>
+
+  <rect class="node-main" x="530" y="462" rx="14" ry="14" width="170" height="54"/>
+  <text class="body" x="552" y="487">repl_main_thread</text>
+  <text class="small" x="552" y="506">turn-16</text>
+
+  <path class="fork" d="M 512 354 C 450 354, 412 352, 374 346" marker-end="url(#arrowFork)"/>
+  <path class="fork" d="M 718 354 C 778 354, 818 352, 856 346" marker-end="url(#arrowFork)"/>
+
+  <rect class="node-branch-a" x="346" y="314" rx="14" ry="14" width="150" height="64"/>
+  <text class="body" x="366" y="340">prompt_suggestion</text>
+  <text class="small" x="366" y="359">turn-1</text>
+
+  <rect class="node-branch-b" x="826" y="314" rx="14" ry="14" width="150" height="64"/>
+  <text class="body" x="849" y="340">extract_memories</text>
+  <text class="small" x="849" y="359">turn-1</text>
+
+  <path class="line" d="M 901 378 L 901 444" marker-end="url(#arrowBlue)"/>
+  <rect class="node-compact" x="836" y="444" rx="14" ry="14" width="130" height="60"/>
+  <text class="body" x="867" y="470">compact</text>
+  <text class="small" x="863" y="489">turn-1</text>
+
+  <path class="ret" d="M 901 504 C 900 560, 760 566, 700 514" marker-end="url(#arrowReturn)"/>
+  <text class="small" x="760" y="552">possible return</text>
+
+  <text class="small" x="376" y="606">Fork edges mark child query starts.</text>
+  <text class="small" x="376" y="624">Return edges appear only when a later parent turn exists.</text>
+
+  <rect class="card" x="928" y="140" rx="16" ry="16" width="292" height="560"/>
+  <text class="subtitle" x="952" y="176">3. Detail drawer</text>
+  <rect class="tab" x="952" y="198" rx="10" ry="10" width="66" height="30"/>
+  <text class="small" x="970" y="217">Overview</text>
+  <rect class="tab-active" x="1026" y="198" rx="10" ry="10" width="66" height="30"/>
+  <text class="small" x="1043" y="217">Dialogue</text>
+  <rect class="tab" x="1100" y="198" rx="10" ry="10" width="50" height="30"/>
+  <text class="small" x="1111" y="217">Tools</text>
+  <rect class="tab" x="1158" y="198" rx="10" ry="10" width="42" height="30"/>
+  <text class="small" x="1163" y="217">...</text>
+
+  <rect class="dialogue-a" x="952" y="246" rx="12" ry="12" width="244" height="76"/>
+  <text class="subtitle" x="968" y="268">Assistant (carried)</text>
+  <text class="small" x="968" y="292">Pull --rebase succeeded.</text>
+  <text class="small" x="968" y="310">Now we can push.</text>
+
+  <rect class="dialogue-t" x="952" y="336" rx="12" ry="12" width="244" height="72"/>
+  <text class="subtitle" x="968" y="358">Tool result</text>
+  <text class="small" x="968" y="382">main -&gt; main</text>
+  <text class="small" x="968" y="400">push completed</text>
+
+  <rect class="dialogue-u" x="952" y="422" rx="12" ry="12" width="244" height="74"/>
+  <text class="subtitle" x="968" y="444">User</text>
+  <text class="small" x="968" y="468">[SUGGESTION MODE]</text>
+  <text class="small" x="968" y="486">predict next input</text>
+
+  <rect class="dialogue-a" x="952" y="510" rx="12" ry="12" width="244" height="86"/>
+  <text class="subtitle" x="968" y="532">Assistant</text>
+  <text class="small" x="968" y="556">Suggested next user input</text>
+  <text class="small" x="968" y="574">returned by child query</text>
+
+  <text class="small" x="952" y="640">Read Dialogue top to bottom, but do not assume</text>
+  <text class="small" x="952" y="658">a simple user-assistant alternation.</text>
+
+  <circle class="step" cx="104" cy="160" r="16"/><text class="stepText" x="99" y="165">1</text>
+  <circle class="step" cx="370" cy="160" r="16"/><text class="stepText" x="365" y="165">2</text>
+  <circle class="step" cx="976" cy="160" r="16"/><text class="stepText" x="971" y="165">3</text>
+</svg>

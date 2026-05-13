@@ -33,6 +33,10 @@ The semantic viewer was upgraded from a static per-query lane view into a more d
 
 The viewer is easiest to read as `search -> graph -> drawer`.
 
+<p align="center">
+  <img src="../../../docs/images/semantic-viewer-panel.svg" alt="Semantic viewer panel overview" width="980">
+</p>
+
 Panel layout sketch:
 
 ```text
@@ -66,6 +70,10 @@ flowchart TD
   C -. possible return .-> F["later parent turn"]
   E -. possible return .-> F
 ```
+
+<p align="center">
+  <img src="../../../docs/images/semantic-viewer-dialogue.svg" alt="How to read a dialogue drawer" width="980">
+</p>
 
 ## How To Read Dialogue
 
